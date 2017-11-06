@@ -6,67 +6,106 @@ from zoomscanner import osr
 STARS_PATH = r'C:\Program Files (x86)\PokerStars\PokerStars.exe'
 
 
-class Scanner:
+class ListField:
+    def __init__(self, name):
+        self.name = name
+        self.first_x = 0
+        self.last_x = 0
 
+
+
+class List:
+    pass
+
+
+
+class StarsList:
+    def __init__(self, ps_list):
+        self.list_ = ps_list
+        self.header = None
+        self.zones = None
+        self.end_of_list = False
+        self.variant = osr.TABLE_LIST
+        self.current_record = None
+
+
+class Scanner:
     def __init__(self, path=STARS_PATH):
         self.path = path
         self.app = None
         self.connect()
         self.main_window = self.app.window(title_re="PokerStars Lobby.*")
-        self.table_list = self.main_window['PokerStarsList']
-        self.table_list_header = self.main_window['PokerStarsHeaderClass']
-        self.table_list_zones = None
-        self.count_headers_zones()
-        self.reset_table_list()
-        self.player_list = None
-        self.table = None
-        self.end_of_tables = False
+        self.table_list = StarsList(self.main_window['PokerStarsList'])
+        self.table_list.header = self.main_window['PokerStarsHeaderClass']
+        self.table_list.variant = osr.TABLE_LIST
+        self.get_list_zones(self.table_list)
+
+        self.player_list = StarsList(self.main_window['PokerStarsList2'])
+        self.player_list.header = self.main_window['PokerStarsHeaderClass2']
+        self.player_list.variant = osr.PLAYER_LIST
+        self.get_list_zones(self.player_list)
 
     def connect(self):
         self.app = Application().connect(path=r'C:\Program Files (x86)\PokerStars\PokerStars.exe')
 
-    def count_headers_zones(self):
-        self.table_list_header.set_focus()
-        header_image = self.table_list_header.capture_as_image()
-        self.table_list_zones = osr.get_list_zones(header_image)
+    @staticmethod
+    def get_list_zones(ps_list: StarsList):
+        ps_list.header.set_focus()
+        time.sleep(1)
+        header_image = ps_list.header.capture_as_image()
+        ps_list.zones = osr.get_list_zones(header_image, ps_list=ps_list.variant)
 
-    def reset_table_list(self):
-        self.table_list.set_focus()
-        self.table_list.type_keys('^{HOME}')
-        self.end_of_tables = False
+    @staticmethod
+    def reset_list(ps_list: StarsList):
+        ps_list.list_.set_focus()
+        ps_list.list_.type_keys('^{HOME}')
+        ps_list.end_of_list = False
 
-    def scan_table_list(self):
-        self.reset_table_list()
-        self.recognize_table_fields()
-        while not self.end_of_tables:
-            self.next_table()
-            self.recognize_table_fields()
+    def scan_list(self, ps_list: StarsList):
+        self.reset_list(ps_list)
+        self.recognize_fields(ps_list)
+        while not ps_list.end_of_list:
+            self.next_table(ps_list)
+            if ps_list == self.table_list:
+                self.scan_list(self.player_list)
+            self.recognize_fields(ps_list)
 
-    def next_table(self):
-        self.table_list.set_focus()
-        self.table_list.type_keys('{DOWN}')
+    @staticmethod
+    def next_table(ps_list: StarsList):
+        ps_list.list_.set_focus()
+        ps_list.list_.type_keys('{DOWN}')
 
-    def recognize_table_fields(self):
-        self.table_list.set_focus()
-        table_list_image = self.table_list.capture_as_image()
-        fields = osr.recognize_fields(table_list_image, self.table_list_zones)
-        previous_table = self.table
-        self.table = fields['name']
-        print(self.table)
-        if self.table == previous_table:
-            self.end_of_tables = True
+    def recognize_fields(self, ps_list: StarsList):
+        ps_list.list_.set_focus()
+        list_image = ps_list.list_.capture_as_image()
+        fields = osr.recognize_fields(list_image, ps_list.zones, ps_list=ps_list.variant)
+        previous_record = ps_list.current_record
+        ps_list.current_record = fields['name']
+
+        if ps_list.current_record == previous_record:
+            ps_list.end_of_list = True
+        else:
+            if ps_list == self.table_list:
+                name = fields['name']
+                stakes = fields['stakes'].replace(' ', '')
+                game = fields['game']
+                players = fields['plrs'].replace(' ', '')
+                avg_pot = fields['avg_pot'].replace(' ', '')
+                players_flop = fields['plrs_flop'].replace(' ', '')
+                hands_hour = fields['hands_hour'].replace(' ', '')
+                print(name, stakes, game, players, avg_pot, players_flop, hands_hour)
+            else:
+                name = fields['name']
+                print(name)
 
     def main_loop(self):
         while (True):
-            self.scan_table_list()
+            self.scan_list(self.table_list)
             osr.dump_symbols()
             time.sleep(10)
             print("----------")
 
 
-
 if __name__ == '__main__':
     s = Scanner()
-    s.scan_table_list()
     s.main_loop()
-
