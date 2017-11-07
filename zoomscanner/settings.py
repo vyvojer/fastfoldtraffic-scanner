@@ -50,3 +50,5 @@ pokerstars = {
     'player_list_cursor_zone': (170, 171),
     'room': 'PS'
 }
+
+json_dir = 'd:\\temp\\json'

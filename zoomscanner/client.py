@@ -141,8 +141,8 @@ class ClientList:
 
     def __iter__(self):
         self.reset()
-        value_dict = {}
         while self.has_next:
+            value_dict = {}
             value_dict['name'] = self.value
             if self.fields is not None:
                 for field in self.fields:

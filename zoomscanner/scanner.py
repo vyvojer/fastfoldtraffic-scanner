@@ -1,6 +1,9 @@
 import time
 import logging
 import logging.config
+import pprint
+import json
+import os.path
 
 from zoomscanner.client import *
 from zoomscanner import settings
@@ -13,6 +16,7 @@ class Scanner:
     def __init__(self):
         self.client = Client()
         self.client.prepare()
+        self.to_file = True
 
     def scan_players(self):
         self.client.move_main_window()
@@ -29,6 +33,8 @@ class Scanner:
     def scan_tables(self):
         self.client.move_main_window()
         self.client.close_not_main_windows()
+        tables = []
+        scan = {}
         for table in self.client.table_list:
             if table['players_count'] > 0:
                 unique_players_count, entries_count, players = self.scan_players()
@@ -41,8 +47,17 @@ class Scanner:
                 table['unique_players_count'] = 0
                 table['entries_count'] = 0
                 table['players'] = []
-            print(table)
+            tables.append(table)
+        scan['room'] = settings.pokerstars['room']
+        scan['tables'] = tables
+        self._handle_scan(scan)
 
+    def _handle_scan(self, scan):
+        if self.to_file:
+            with open(os.path.join(settings.json_dir, 'dump-{}.json'.format(time.time())), 'w') as file:
+                json.dump(scan, file)
+        else:
+            print(json.dumps(scan, indent=4))
 
     def main_loop(self):
         while True:
@@ -53,16 +68,12 @@ class Scanner:
                 log.error("Exception during scan", exc_info=True)
             time.sleep(30)
 
-
-
     @staticmethod
     def _is_players_count_almost_equal(players, entries):
         if abs(players - entries) < 10:
             return True
         else:
             return False
-
-
 
 
 if __name__ == '__main__':
