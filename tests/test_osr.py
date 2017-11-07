@@ -64,6 +64,20 @@ class TestIntersection(unittest.TestCase):
 
 
 class SymbolsDatasetTest(unittest.TestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        cls.img_of_2 = np.array([[0, 255, 255, 255, 255, 0],
+                                 [255, 0, 0, 0, 0, 255],
+                                 [255, 0, 0, 0, 0, 255],
+                                 [0, 0, 0, 0, 0, 255],
+                                 [0, 0, 0, 0, 255, 0],
+                                 [0, 0, 0, 255, 0, 0],
+                                 [0, 0, 255, 0, 0, 0],
+                                 [0, 255, 0, 0, 0, 0],
+                                 [255, 0, 0, 0, 0, 0],
+                                 [255, 255, 255, 255, 255, 255]], dtype=np.uint8)
+
     def test_save_load(self):
         sd = SymbolsDataset('symbols_test.dat')
         sd.symbols = {'pu': 'tu'}
@@ -71,6 +85,12 @@ class SymbolsDatasetTest(unittest.TestCase):
         sd2 = SymbolsDataset('symbols_test.dat')
         sd2.load_dataset()
         self.assertEqual(sd2.symbols['pu'], 'tu')
+
+    def test_recognize_symbol(self):
+        dataset = SymbolsDataset(symbols={(10, 6):[SymbolRecord(self.img_of_2, '2')]})
+        symbol = dataset.get_symbol(self.img_of_2,)
+        self.assertEqual(symbol, '2')
+
 
 
 class OsrTest(unittest.TestCase):
@@ -125,12 +145,6 @@ class OsrTest(unittest.TestCase):
         osr = Osr(self.test_players_img_1, cursor=self.players_cursor, fields=[], dataset_dict={})
         text = osr._recognize_text(osr.gray_image[0:20, 190:220], dataset)
         self.assertEqual(text, '2')
-
-    def test_recognize_symbol(self):
-        dataset = SymbolsDataset(symbols={(10, 6):[SymbolRecord(self.img_of_2, '2')]})
-        osr = Osr(self.test_players_img_1, cursor=self.players_cursor, fields=[], dataset_dict={})
-        symbol = osr._recognize_symbol(self.img_of_2, dataset)
-        self.assertEqual(symbol, '2')
 
     def test_recognize_fields(self):
         dataset = SymbolsDataset(symbols={(10, 6): [SymbolRecord(self.img_of_2, '2')]})

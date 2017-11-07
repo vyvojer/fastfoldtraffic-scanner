@@ -35,6 +35,18 @@ class SymbolsDataset:
             self.file = file
             self.load_dataset()
 
+    def get_symbol(self, symbol_image):
+        appropiriate_size = self.symbols.setdefault(symbol_image.shape)
+        for symbol_record in appropiriate_size:
+            if np.array_equal(symbol_record.image, symbol_image):
+                symbol = symbol_record.symbol
+                break
+        else:
+            symbol = None
+            appropiriate_size.append(SymbolRecord(symbol_image, symbol))
+        return symbol
+
+
     def load_dataset(self):
         self.symbols = {}
         try:
@@ -69,7 +81,6 @@ class Osr:
     def _recognize_cursor(self):
         log.info("Recognizing cursor...")
         cropped_image = self.gray_image[:, self.cursor[0]:self.cursor[1]]
-        cv2.imwrite('cropped.png', cropped_image)
         _, thresh_image = cv2.threshold(cropped_image, 200, 255, cv2.THRESH_BINARY_INV)
         _, contours, hierarchy = cv2.findContours(thresh_image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         if len(contours) == 1:
@@ -95,23 +106,11 @@ class Osr:
         united_rects = self._get_united(intersected_rects)
         for index, (x, y, w, h) in enumerate(united_rects):
             symbol_image = thresh[y:y + h, x:x + w]
-            cv2.imwrite('symbol_of_2.png', symbol_image)
-            symbol = self._recognize_symbol(symbol_image, dataset)
+            symbol = dataset.get_symbol(symbol_image)
             if index > 0 and self._check_space(united_rects[index - 1], (x, y, w, h)):
                 text += ' '
             text += str(symbol)
         return text
-
-    def _recognize_symbol(self, symbol_image, dataset: SymbolsDataset):
-        appropriate_list = dataset.symbols.setdefault(symbol_image.shape, list())
-        for symbol_record in appropriate_list:
-            if np.array_equal(symbol_record.image, symbol_image):
-                symbol = symbol_record.symbol
-                break
-        else:
-            symbol = None
-            appropriate_list.append(SymbolRecord(symbol_image, symbol))
-        return symbol
 
     @staticmethod
     def _has_intersection(rect, next_rect):

@@ -1,7 +1,7 @@
 import time
 import logging
 import logging.config
-import pprint
+import sys
 import json
 import os.path
 
@@ -60,13 +60,17 @@ class Scanner:
             print(json.dumps(scan, indent=4))
 
     def main_loop(self):
-        while True:
-            try:
-                self.client.prepare()
-                self.scan_tables()
-            except Exception:
-                log.error("Exception during scan", exc_info=True)
-            time.sleep(30)
+        try:
+            while True:
+                try:
+                    self.client.prepare()
+                    self.scan_tables()
+                except Exception:
+                    log.error("Exception during scan", exc_info=True)
+                time.sleep(30)
+        except KeyboardInterrupt:
+            print("You pressed Ctrl+C")
+            sys.exit(0)
 
     @staticmethod
     def _is_players_count_almost_equal(players, entries):
@@ -80,4 +84,3 @@ if __name__ == '__main__':
     s = Scanner()
     s.main_loop()
     s.client.save_datasets()
-
