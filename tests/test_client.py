@@ -1,8 +1,10 @@
 import unittest
-from client import *
+from zoomscanner.client import *
+from zoomscanner.osr import *
+from zoomscanner import settings
 
 
-class TestClient(unittest.TestCase):
+class ClientTest(unittest.TestCase):
 
     def setUp(self):
         self.VALID_PATH = r'C:\Program Files (x86)\PokerStars\PokerStars.exe'
@@ -19,32 +21,78 @@ class TestClient(unittest.TestCase):
         self.assertTrue(ps.is_running())
 
 
-class TestWindow(unittest.TestCase):
+class WindowTest(unittest.TestCase):
 
     def setUp(self):
         self.client = Client()
         self.client.connect_or_start()
 
+    def test__init(self):
+        mw = ClientWindow(self.client, "PokerStars Lobby")
+        tw = ClientWindow(self.client)
+        self.assertEqual(mw.title, tw.title)
+
     def test__eq__(self):
-        tw1 = Window.from_control(self.client, self.client.app.top_window())
-        tw2 = Window.from_control(self.client, self.client.app.top_window())
+        tw1 = ClientWindow.from_control(self.client, self.client.app.top_window())
+        tw2 = ClientWindow.from_control(self.client, self.client.app.top_window())
 
         self.assertEqual(tw1, tw2)
 
 
-class TestList(unittest.TestCase):
+class ListFieldTest(unittest.TestCase):
+
+    def test_character(self):
+        field = ListField('name', 0, 0, None, value='2.90')
+        self.assertEqual(field.parsed_value, '2.90')
+
+    def test_int(self):
+        field = ListField('name', 0, 0, None, field_type=ListField.INT, value='20')
+        self.assertEqual(field.parsed_value, 20)
+
+        field = ListField('name', 0, 0, None, field_type=ListField.INT, value='2.9s')
+        self.assertEqual(field.parsed_value, 29)
+
+        field = ListField('name', 0, 0, None, field_type=ListField.INT, value='s')
+        self.assertEqual(field.parsed_value, 0)
+
+    def test_float(self):
+        field = ListField('name', 0, 0, None, field_type=ListField.FLOAT, value='2.90')
+        self.assertEqual(field.parsed_value, 2.9)
+
+        field = ListField('name', 0, 0, None, field_type=ListField.FLOAT, value='2.9s')
+        self.assertEqual(field.parsed_value, 2.9)
+
+        field = ListField('name', 0, 0, None, field_type=ListField.FLOAT, value='s')
+        self.assertEqual(field.parsed_value, 0)
+
+    def test_from_dict(self):
+        field_dict = {
+            'name': 'entries',
+            'left_x': 190,
+            'right_x': 220,
+            'field_type': 'INT'
+        }
+        field = ListField.from_dict(field_dict)
+        self.assertEqual(field.name, 'entries')
+        self.assertEqual(field.left_x, 190)
+        self.assertEqual(field.right_x, 220)
+        self.assertEqual(field.dataset_name, 'default')
+        self.assertEqual(field.field_type, ListField.INT)
+
+
+class ListTest(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
         client = Client()
-        client.connect_or_start()
-        cls.main_window =  Window(client, title_re='PokerStars Lobby')
+        client.prepare()
+        cls.main_window =  ClientWindow(client, title_re='PokerStars Lobby')
 
     def test__init__(self):
-        player_list = List(self.main_window, 'PokerStarsList2')
+        player_list = ClientList(self.main_window, 'PokerStarsList2')
 
     def test_get_next(self):
-        player_list = List(self.main_window, 'PokerStarsList2')
+        player_list = ClientList(self.main_window, 'PokerStarsList2')
         first_value = player_list.reset()
         self.assertEqual(player_list.has_next, True)
         self.assertEqual(first_value, player_list.value)
@@ -53,17 +101,12 @@ class TestList(unittest.TestCase):
         self.assertEqual(first_value, player_list.previous_value)
 
     def test_has_next(self):
-        player_list = List(self.main_window, 'PokerStarsList2')
+        player_list = ClientList(self.main_window, 'PokerStarsList2')
         player_list.control.type_keys('^{END}')
         player_list.get_value()
         self.assertEqual(player_list.has_next, True)
         player_list.get_next()
         self.assertEqual(player_list.has_next, False)
-
-    def test_iterator(self):
-        player_list = List(self.main_window, 'PokerStarsList2')
-        for value in player_list:
-            print(value)
 
 
 
