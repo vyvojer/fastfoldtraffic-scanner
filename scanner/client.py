@@ -1,13 +1,13 @@
 import logging
 import logging.config
 import re
-
-from pywinauto.application import Application, ProcessNotFoundError, AppStartError
-from pywinauto import clipboard
 import win32gui
 
-from zoomscanner.osr import Osr, SymbolsDataset
-from zoomscanner import settings
+from pywinauto import clipboard
+from pywinauto.application import Application, ProcessNotFoundError, AppStartError
+from scanner.osr import Osr, SymbolsDataset
+
+from scanner import settings
 
 logging.config.dictConfig(settings.logging_config)
 log = logging.getLogger(__name__)

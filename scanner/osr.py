@@ -1,14 +1,12 @@
-from collections import Iterable
-import pickle
-import logging
 import logging.config
-
+import pickle
 from tkinter import Tk, Label, Button, Entry
-from PIL import Image, ImageTk
+
 import cv2
 import numpy as np
+from PIL import Image, ImageTk
 
-from zoomscanner import settings
+from scanner import settings
 
 PLAYER_LIST = 0
 TABLE_LIST = 1
@@ -23,6 +21,9 @@ class SymbolRecord:
         self.image = image
         self.symbol = symbol
 
+    def __repr__(self):
+        return "SymbolRecord({}, {})".format(self.image, self.symbol)
+
 
 class SymbolsDataset:
     def __init__(self, file=None, symbols=None):
@@ -35,17 +36,21 @@ class SymbolsDataset:
             self.file = file
             self.load_dataset()
 
-    def get_symbol(self, symbol_image):
-        appropiriate_size = self.symbols.setdefault(symbol_image.shape)
+    def get_symbol_record(self, symbol_image):
+        appropiriate_size = self.symbols.setdefault(symbol_image.shape, list())
         for symbol_record in appropiriate_size:
             if np.array_equal(symbol_record.image, symbol_image):
-                symbol = symbol_record.symbol
+                symbol_record =  symbol_record
                 break
         else:
-            symbol = None
-            appropiriate_size.append(SymbolRecord(symbol_image, symbol))
-        return symbol
+            symbol_record = SymbolRecord(symbol_image, None)
+            appropiriate_size.append(SymbolRecord(symbol_image, symbol_record))
+        return symbol_record
 
+    def __iter__(self):
+        for one_size_symbols in self.symbols.values():
+            for symbol in one_size_symbols:
+                yield symbol
 
     def load_dataset(self):
         self.symbols = {}
@@ -106,7 +111,7 @@ class Osr:
         united_rects = self._get_united(intersected_rects)
         for index, (x, y, w, h) in enumerate(united_rects):
             symbol_image = thresh[y:y + h, x:x + w]
-            symbol = dataset.get_symbol(symbol_image)
+            symbol = dataset.get_symbol_record(symbol_image).symbol
             if index > 0 and self._check_space(united_rects[index - 1], (x, y, w, h)):
                 text += ' '
             text += str(symbol)
@@ -276,7 +281,7 @@ class TrainGUI:
 
 def train_symbols():
     root = Tk()
-    my_gui = TrainGUI(root, 'pokerstars.dat')
+    my_gui = TrainGUI(root, 'pokerstars_symbols.dat')
     root.mainloop()
 
 

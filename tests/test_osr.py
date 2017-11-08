@@ -1,10 +1,11 @@
 import unittest
-from PIL import Image
-import numpy as np
 
-from zoomscanner.osr import SymbolsDataset, SymbolRecord
-from zoomscanner.osr import Osr
-from client import *
+import numpy as np
+from PIL import Image
+from scanner.osr import Osr
+from scanner.osr import SymbolsDataset, SymbolRecord
+
+from scanner.client import *
 
 
 class TestIntersection(unittest.TestCase):
@@ -64,7 +65,6 @@ class TestIntersection(unittest.TestCase):
 
 
 class SymbolsDatasetTest(unittest.TestCase):
-
     @classmethod
     def setUpClass(cls):
         cls.img_of_2 = np.array([[0, 255, 255, 255, 255, 0],
@@ -78,6 +78,17 @@ class SymbolsDatasetTest(unittest.TestCase):
                                  [255, 0, 0, 0, 0, 0],
                                  [255, 255, 255, 255, 255, 255]], dtype=np.uint8)
 
+        cls.img_of_3 = np.array([[0, 255, 255, 255, 255, 0],
+                                 [255, 0, 0, 0, 0, 255],
+                                 [255, 0, 0, 0, 0, 255],
+                                 [0, 0, 0, 0, 0, 255],
+                                 [0, 0, 255, 255, 255, 0],
+                                 [0, 0, 0, 0, 0, 255],
+                                 [0, 0, 0, 0, 0, 255],
+                                 [255, 0, 0, 0, 0, 255],
+                                 [255, 0, 0, 0, 0, 255],
+                                 [0, 255, 255, 255, 255, 0]], dtype=np.uint8)
+
     def test_save_load(self):
         sd = SymbolsDataset('symbols_test.dat')
         sd.symbols = {'pu': 'tu'}
@@ -87,9 +98,18 @@ class SymbolsDatasetTest(unittest.TestCase):
         self.assertEqual(sd2.symbols['pu'], 'tu')
 
     def test_recognize_symbol(self):
-        dataset = SymbolsDataset(symbols={(10, 6):[SymbolRecord(self.img_of_2, '2')]})
-        symbol = dataset.get_symbol(self.img_of_2,)
+        dataset = SymbolsDataset(symbols={(10, 6): [SymbolRecord(self.img_of_2, '2')]})
+        symbol = dataset.get_symbol_record(self.img_of_2).symbol
         self.assertEqual(symbol, '2')
+
+    def test__iter_(self):
+        dataset = SymbolsDataset()
+        dataset.get_symbol_record(self.img_of_2)
+        dataset.get_symbol_record(self.img_of_3)
+        symbols = [symbol.image for symbol in dataset]
+        self.assertEqual(len(symbols), 2)
+        self.assertIn(self.img_of_2, symbols)
+        self.assertIn(self.img_of_2, symbols)
 
 
 
@@ -153,4 +173,3 @@ class OsrTest(unittest.TestCase):
         osr = Osr(self.test_players_img_1, cursor=self.players_cursor, fields=[entry_field], dataset_dict=dataset_dict)
         osr.recognize_fields()
         self.assertEqual(entry_field.value, '2')
-

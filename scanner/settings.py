@@ -1,6 +1,6 @@
 import logging
 
-log_path = 'scanner.log'
+log_path = 'scan.log'
 
 logging_config = {
     'version': 1,
@@ -35,7 +35,7 @@ pokerstars = {
     'path': r'C:\Program Files (x86)\PokerStars\PokerStars.exe',
     'default_width': 1070,
     'default_height': 701,
-    'dataset': {'default': 'pokerstars.dat'},
+    'dataset': {'default': 'pokerstars_symbols.dat'},
     'main_window': 'PokerStars Lobby',
     'table_list': 'PokerStarsList0',
     'player_list': 'PokerStarsList2',

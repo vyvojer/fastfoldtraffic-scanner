@@ -1,12 +1,11 @@
-import time
-import logging
-import logging.config
-import sys
 import json
+import logging.config
 import os.path
+import sys
+import time
 
-from zoomscanner.client import *
-from zoomscanner import settings
+from scan import settings
+from scanner.client import *
 
 logging.config.dictConfig(settings.logging_config)
 log = logging.getLogger(__name__)

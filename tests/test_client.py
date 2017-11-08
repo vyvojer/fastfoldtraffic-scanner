@@ -1,7 +1,8 @@
 import unittest
-from zoomscanner.client import *
-from zoomscanner.osr import *
-from zoomscanner import settings
+
+from scan.osr import *
+
+from scanner.client import *
 
 
 class ClientTest(unittest.TestCase):
