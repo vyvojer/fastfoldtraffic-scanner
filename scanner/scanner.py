@@ -4,7 +4,7 @@ import os.path
 import sys
 import time
 
-from scan import settings
+from scanner import settings
 from scanner.client import *
 
 logging.config.dictConfig(settings.logging_config)
