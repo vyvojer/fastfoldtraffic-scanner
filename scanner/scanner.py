@@ -82,4 +82,4 @@ class Scanner:
 if __name__ == '__main__':
     s = Scanner()
     s.main_loop()
-    s.client.save_datasets()
+#    s.client.save_datasets()
