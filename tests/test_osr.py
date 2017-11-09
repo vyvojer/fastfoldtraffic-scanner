@@ -2,8 +2,7 @@ import unittest
 
 import numpy as np
 from PIL import Image
-from scanner.osr import Osr
-from scanner.osr import SymbolsDataset, SymbolRecord
+from scanner.osr import *
 
 from scanner.client import *
 
@@ -99,7 +98,7 @@ class SymbolsDatasetTest(unittest.TestCase):
 
     def test_recognize_symbol(self):
         dataset = SymbolsDataset(symbols={(10, 6): [SymbolRecord(self.img_of_2, '2')]})
-        symbol = dataset.get_symbol_record(self.img_of_2).symbol
+        symbol = dataset.get_symbol_record(self.img_of_2).text
         self.assertEqual(symbol, '2')
 
     def test__iter_(self):
@@ -112,8 +111,8 @@ class SymbolsDatasetTest(unittest.TestCase):
         self.assertIn(self.img_of_2, symbols)
 
 
-
 class OsrTest(unittest.TestCase):
+
     @classmethod
     def setUpClass(cls):
         cls.test_players_img_1 = Image.open('osr_data/test_players_1.png')
@@ -165,6 +164,24 @@ class OsrTest(unittest.TestCase):
         osr = Osr(self.test_players_img_1, cursor=self.players_cursor, fields=[], dataset_dict={})
         text = osr._recognize_text(osr.gray_image[0:20, 190:220], dataset)
         self.assertEqual(text, '2')
+
+    def test_recognize_picture(self):
+        dataset = SymbolsDataset()
+        rus_flag = pil_to_opencv(self.test_players_img_1)[0:20, 144:168]
+        bra_flag_1 = pil_to_opencv(self.test_players_img_2)[21:41, 144:168]
+        bra_flag_2 = pil_to_opencv(self.test_players_img_3)[42:62, 144:168]
+        bra_flag_3 = pil_to_opencv(self.test_players_img_4)[399:419, 144:168]
+        Osr._recognize_picture(rus_flag, dataset)
+        symbols = [symbol_record for symbol_record in dataset]
+        symbols[0].text = 'rus'
+        Osr._recognize_picture(bra_flag_2, dataset)
+        symbols = [symbol_record for symbol_record in dataset if symbol_record.text is None]
+        symbols[0].text = 'bra'
+        self.assertEqual(Osr._recognize_picture(rus_flag, dataset), 'rus')
+        self.assertEqual(Osr._recognize_picture(bra_flag_1, dataset), 'bra')
+        self.assertEqual(Osr._recognize_picture(bra_flag_2, dataset), 'bra')
+        self.assertEqual(Osr._recognize_picture(bra_flag_3, dataset), 'bra')
+
 
     def test_recognize_fields(self):
         dataset = SymbolsDataset(symbols={(10, 6): [SymbolRecord(self.img_of_2, '2')]})

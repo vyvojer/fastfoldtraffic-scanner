@@ -17,12 +17,12 @@ logging.getLogger('PIL').setLevel(logging.WARNING)
 
 
 class SymbolRecord:
-    def __init__(self, image, symbol):
+    def __init__(self, image, text):
         self.image = image
-        self.symbol = symbol
+        self.text = text
 
     def __repr__(self):
-        return "SymbolRecord({}, {})".format(self.image, self.symbol)
+        return "SymbolRecord({}, {})".format(self.image, self.text)
 
 
 class SymbolsDataset:
@@ -44,7 +44,7 @@ class SymbolsDataset:
                 break
         else:
             symbol_record = SymbolRecord(symbol_image, None)
-            appropiriate_size.append(SymbolRecord(symbol_image, symbol_record))
+            appropiriate_size.append(symbol_record)
         return symbol_record
 
     def __iter__(self):
@@ -70,7 +70,7 @@ class Osr:
         self.cursor = cursor
         self.fields = fields
         self.dataset_dict = dataset_dict
-        self.origin_image = pil2opencv(pil_image)
+        self.origin_image = pil_to_opencv(pil_image)
         self.gray_image = cv2.cvtColor(self.origin_image, cv2.COLOR_BGR2GRAY)
         self.cursor_top = None
         self.cursor_bottom = None
@@ -87,7 +87,7 @@ class Osr:
         log.info("Recognizing cursor...")
         cropped_image = self.gray_image[:, self.cursor[0]:self.cursor[1]]
         _, thresh_image = cv2.threshold(cropped_image, 200, 255, cv2.THRESH_BINARY_INV)
-        _, contours, hierarchy = cv2.findContours(thresh_image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        _, contours, _ = cv2.findContours(thresh_image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         if len(contours) == 1:
             [x, y, w, h] = cv2.boundingRect(contours[0])
         else:
@@ -97,7 +97,8 @@ class Osr:
         self.cursor_bottom = y + h - 1
         return self.cursor_top, self.cursor_bottom
 
-    def _recognize_text(self, text_image, dataset: SymbolsDataset):
+    @staticmethod
+    def _recognize_text(text_image, dataset: SymbolsDataset):
         log.info("Recognizing text...")
         _, thresh = cv2.threshold(text_image, 160, 255, cv2.THRESH_BINARY)
         _, contours, hierarchy = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -108,13 +109,23 @@ class Osr:
             if w < 10:  # Remove unexpected big artefacts
                 intersected_rects.append((x, y, w, h))
         intersected_rects.sort(key=lambda x: x[0])
-        united_rects = self._get_united(intersected_rects)
+        united_rects = Osr._get_united(intersected_rects)
         for index, (x, y, w, h) in enumerate(united_rects):
             symbol_image = thresh[y:y + h, x:x + w]
-            symbol = dataset.get_symbol_record(symbol_image).symbol
-            if index > 0 and self._check_space(united_rects[index - 1], (x, y, w, h)):
+            symbol = dataset.get_symbol_record(symbol_image).text
+            if index > 0 and Osr._check_space(united_rects[index - 1], (x, y, w, h)):
                 text += ' '
             text += str(symbol)
+        return text
+
+    @staticmethod
+    def _recognize_picture(picture_image, dataset: SymbolsDataset):
+        background = picture_image[1:2, 1:2]
+        mask = cv2.inRange(picture_image, background, background)
+        mask_inv = cv2.bitwise_not(mask)
+        (x, y, w, h) = cv2.boundingRect(mask_inv)
+        symbol_image = picture_image[y:y + h, x:x + w]
+        text = dataset.get_symbol_record(symbol_image).text
         return text
 
     @staticmethod
@@ -184,14 +195,14 @@ class Osr:
             return False
 
 
-def pil2opencv(pil_image: Image) -> cv2:
+def pil_to_opencv(pil_image: Image) -> cv2:
     open_cv_image = np.array(pil_image.convert('RGB'))
     return open_cv_image
 
 
 def get_list_zones(pil_image: Image, ps_list=TABLE_LIST) -> dict:
     list_zones = dict()
-    original = pil2opencv(pil_image)
+    original = pil_to_opencv(pil_image)
     cropped = original[-5: -1, :]
     gray = cv2.cvtColor(cropped, cv2.COLOR_BGR2GRAY)
     ret, thresh = cv2.threshold(gray, 200, 255, cv2.THRESH_BINARY)
