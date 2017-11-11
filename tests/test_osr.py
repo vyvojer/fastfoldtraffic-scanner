@@ -112,7 +112,6 @@ class SymbolsDatasetTest(unittest.TestCase):
 
 
 class OsrTest(unittest.TestCase):
-
     @classmethod
     def setUpClass(cls):
         cls.test_players_img_1 = Image.open('osr_data/test_players_1.png')
@@ -131,6 +130,17 @@ class OsrTest(unittest.TestCase):
                                  [0, 255, 0, 0, 0, 0],
                                  [255, 0, 0, 0, 0, 0],
                                  [255, 255, 255, 255, 255, 255]], dtype=np.uint8)
+        cls.img_of_3 = np.array([[0, 255, 255, 255, 255, 0],
+                                 [255, 0, 0, 0, 0, 255],
+                                 [255, 0, 0, 0, 0, 255],
+                                 [0, 0, 0, 0, 0, 255],
+                                 [0, 0, 255, 255, 255, 0],
+                                 [0, 0, 0, 0, 0, 255],
+                                 [0, 0, 0, 0, 0, 255],
+                                 [255, 0, 0, 0, 0, 255],
+                                 [255, 0, 0, 0, 0, 255],
+                                 [0, 255, 255, 255, 255, 0]]
+                                , dtype=np.uint8)
 
     def test_players_cursor(self):
         osr = Osr(self.test_players_img_1, cursor=self.players_cursor, fields=[], dataset_dict={})
@@ -182,11 +192,43 @@ class OsrTest(unittest.TestCase):
         self.assertEqual(Osr._recognize_picture(bra_flag_2, dataset), 'bra')
         self.assertEqual(Osr._recognize_picture(bra_flag_3, dataset), 'bra')
 
-
     def test_recognize_fields(self):
-        dataset = SymbolsDataset(symbols={(10, 6): [SymbolRecord(self.img_of_2, '2')]})
+        dataset = SymbolsDataset(symbols={(10, 6): [SymbolRecord(self.img_of_2, '2'),
+                                                    SymbolRecord(self.img_of_3, '3')]})
         dataset_dict = {'default': dataset}
         entry_field = ListField('entries', 190, 220, dataset_name='default')
         osr = Osr(self.test_players_img_1, cursor=self.players_cursor, fields=[entry_field], dataset_dict=dataset_dict)
         osr.recognize_fields()
         self.assertEqual(entry_field.value, '2')
+
+    def test_recognize_fields_with_text_and_picture(self):
+        pic_dataset = SymbolsDataset()
+        rus_flag = pil_to_opencv(self.test_players_img_1)[0:20, 144:168]
+        bra_flag_1 = pil_to_opencv(self.test_players_img_2)[21:41, 144:168]
+        bra_flag_2 = pil_to_opencv(self.test_players_img_3)[42:62, 144:168]
+        bra_flag_3 = pil_to_opencv(self.test_players_img_4)[399:419, 144:168]
+        Osr._recognize_picture(rus_flag, pic_dataset)
+        symbols = [symbol_record for symbol_record in pic_dataset]
+        symbols[0].text = 'rus'
+        Osr._recognize_picture(bra_flag_2, pic_dataset)
+        symbols = [symbol_record for symbol_record in pic_dataset if symbol_record.text is None]
+        symbols[0].text = 'bra'
+        char_dataset = SymbolsDataset(symbols={(10, 6): [SymbolRecord(self.img_of_2, '2'),
+                                                         SymbolRecord(self.img_of_3, '3')]})
+        dataset_dict = {'default': char_dataset, 'flags': pic_dataset}
+        entry_field = ListField('entries', 190, 220, dataset_name='default')
+        flag_field = ListField('country', 144, 168, dataset_name='flags', field_type=ListField.PICTURE)
+        osr = Osr(self.test_players_img_1,
+                  cursor=self.players_cursor,
+                  fields=[entry_field, flag_field],
+                  dataset_dict=dataset_dict)
+        osr.recognize_fields()
+        self.assertEqual(entry_field.value, '2')
+        self.assertEqual(flag_field.value, 'rus')
+        osr = Osr(self.test_players_img_2,
+                  cursor=self.players_cursor,
+                  fields=[entry_field, flag_field],
+                  dataset_dict=dataset_dict)
+        osr.recognize_fields()
+        self.assertEqual(entry_field.value, '3')
+        self.assertEqual(flag_field.value, 'bra')

@@ -4,10 +4,10 @@ import os.path
 import sys
 import time
 
-from scanner import settings
+#import scanner.settings
 from scanner.client import *
 
-logging.config.dictConfig(settings.logging_config)
+#logging.config.dictConfig(scanner.settings.logging_config)
 log = logging.getLogger(__name__)
 
 
@@ -81,5 +81,6 @@ class Scanner:
 
 if __name__ == '__main__':
     s = Scanner()
-    s.main_loop()
-#    s.client.save_datasets()
+   # s.main_loop()
+    s.scan_tables()
+    s.client.save_datasets()

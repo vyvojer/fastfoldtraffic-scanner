@@ -1,6 +1,8 @@
 import logging.config
 import pickle
+import time
 from tkinter import Tk, Label, Button, Entry
+import os
 
 import cv2
 import numpy as np
@@ -8,8 +10,7 @@ from PIL import Image, ImageTk
 
 from scanner import settings
 
-PLAYER_LIST = 0
-TABLE_LIST = 1
+TABLE_LIST = 0
 
 logging.config.dictConfig(settings.logging_config)
 log = logging.getLogger(__name__)
@@ -36,11 +37,11 @@ class SymbolsDataset:
             self.file = file
             self.load_dataset()
 
-    def get_symbol_record(self, symbol_image):
+    def get_symbol_record(self, symbol_image, max_difference=0):
         appropiriate_size = self.symbols.setdefault(symbol_image.shape, list())
         for symbol_record in appropiriate_size:
-            if np.array_equal(symbol_record.image, symbol_image):
-                symbol_record =  symbol_record
+            if np.count_nonzero(symbol_record.image != symbol_image) <= max_difference:
+                symbol_record = symbol_record
                 break
         else:
             symbol_record = SymbolRecord(symbol_image, None)
@@ -66,6 +67,10 @@ class SymbolsDataset:
 
 
 class Osr:
+    PICTURE = 3
+    COUNT = 0
+    LOGS = r"d:\temp\logs"
+
     def __init__(self, pil_image: Image, cursor: tuple, fields: list, dataset_dict: dict):
         self.cursor = cursor
         self.fields = fields
@@ -78,9 +83,18 @@ class Osr:
     def recognize_fields(self):
         self._recognize_cursor()
         for field in self.fields:
-            field.value = self._recognize_text(
-                self.gray_image[self.cursor_top:self.cursor_bottom, field.left_x:field.right_x],
-                self.dataset_dict[field.dataset_name])
+            dataset = self.dataset_dict[field.dataset_name]
+            if field.field_type == self.PICTURE:
+                picture_image = self.origin_image[self.cursor_top:self.cursor_bottom, field.left_x:field.right_x]
+                if log.getEffectiveLevel() == logging.DEBUG:
+                    Osr.COUNT += 1
+                    log.debug('Processing image %s', Osr.COUNT)
+                    cv2.imwrite(os.path.join(Osr.LOGS, "list-{}.png".format(Osr.COUNT)), self.origin_image)
+                    cv2.imwrite(os.path.join(Osr.LOGS, "picture-{}.png".format(Osr.COUNT)), picture_image)
+                field.value = self._recognize_picture(picture_image, dataset)
+            else:
+                text_image = self.gray_image[self.cursor_top:self.cursor_bottom, field.left_x:field.right_x]
+                field.value = self._recognize_text(text_image, dataset)
         return self.fields
 
     def _recognize_cursor(self):
@@ -120,13 +134,35 @@ class Osr:
 
     @staticmethod
     def _recognize_picture(picture_image, dataset: SymbolsDataset):
-        background = picture_image[1:2, 1:2]
-        mask = cv2.inRange(picture_image, background, background)
+        min_color, max_color = Osr._find_min_and_max_colors(picture_image)
+        mask = cv2.inRange(picture_image, min_color, max_color)
         mask_inv = cv2.bitwise_not(mask)
         (x, y, w, h) = cv2.boundingRect(mask_inv)
-        symbol_image = picture_image[y:y + h, x:x + w]
-        text = dataset.get_symbol_record(symbol_image).text
+        cropped_image = picture_image[y:y + h, x:x + w]
+        if log.getEffectiveLevel() == logging.DEBUG:
+            cv2.imwrite(os.path.join(Osr.LOGS, "processed-{}.png".format(Osr.COUNT)), cropped_image)
+        if cropped_image.shape != (16, 22, 3) and cropped_image.shape != (16, 18, 3):
+            log.warning("Flag image with wrong size %s", cropped_image.shape)
+            log.warning("Flag image saved as %s", cropped_image.shape)
+            ticks = time.time()
+            image_path = os.path.join(settings.log_picture_path, "flag-with_wrong-size-{}.png".format(ticks))
+            cv2.imwrite(image_path, picture_image)
+            text = None
+        else:
+            text = dataset.get_symbol_record(picture_image, max_difference=150).text
         return text
+
+    @staticmethod
+    def _find_min_and_max_colors(pic):
+        h, w, _ = pic.shape
+        corners = []
+        corners.append(pic[0:1, 0:1])
+        corners.append(pic[0:1, w - 1:w])
+        corners.append(pic[h - 2:h - 1, 0:1])
+        corners.append(pic[h - 2:h - 1, w - 1:w])
+        min_color = min(corners, key=lambda corner: corner.min())
+        max_color = max(corners, key=lambda corner: corner.max())
+        return min_color, max_color + 1
 
     @staticmethod
     def _has_intersection(rect, next_rect):
@@ -233,56 +269,56 @@ def get_list_zones(pil_image: Image, ps_list=TABLE_LIST) -> dict:
 
 
 class TrainGUI:
-    def __init__(self, master, dataset_file):
+    def __init__(self, master, dataset_file, only_empty=True):
         self.dataset = SymbolsDataset(file=dataset_file)
         self.master = master
         master.title("Train")
-        self.sym_list = []
-        for sizes in self.dataset.symbols.keys():
-            for symbol_record in self.dataset.symbols[sizes]:
-                if symbol_record.symbol is None:
-                    self.sym_list.append(symbol_record)
-
-        self.index = 0
+        self.only_empty = only_empty
+        self.symbol_record = None
         self.label = Label(master)
         self.label.pack()
         self.entry = Entry(master)
         self.entry.pack()
         self.next_button = Button(master, text="Update", command=self.train)
-        self.delete_button = Button(master, text="Delete", command=self.train)
+        self.delete_button = Button(master, text="Reset", command=self.reset_iterator)
         self.close_button = Button(master, text="Exit", command=self.quit)
         self.delete_button.pack()
         self.next_button.pack()
         self.close_button.pack()
 
-        if len(self.sym_list) > 0:
-            self._update_label(self.sym_list[0])
+        self.reset_iterator()
+
+    def reset_iterator(self):
+        if self.only_empty:
+            self.iterator = iter((s_record for s_record in self.dataset if not s_record.text))
+        else:
+            self.iterator = iter(self.dataset)
+        self.symbol_record = next(self.iterator)
+        if self.symbol_record:
+            self._update_label()
 
     def train(self):
-        symbol_record = self.sym_list[self.index]
         if self.entry.get() != '':
-            symbol_record.symbol = self.entry.get()
-
-        if self.index < len(self.sym_list) - 1:
-            self.index += 1
-            symbol_record = self.sym_list[self.index]
-            self._update_label(symbol_record)
+            self.symbol_record.text = self.entry.get()
+        self.symbol_record = next(self.iterator)
+        if self.symbol_record:
+            self._update_label()
         else:
             self.next_button.config(state="disabled")
 
-    def _update_label(self, symbol_record):
+    def _update_label(self):
         ratio = 5
-        new_dimension = (int(symbol_record.image.shape[1] * ratio), int(symbol_record.image.shape[0] * ratio))
-        new_image = cv2.resize(symbol_record.image, new_dimension, interpolation=cv2.INTER_AREA)
-        new_image = cv2.bitwise_not(new_image)
+        new_dimension = (int(self.symbol_record.image.shape[1] * ratio), int(self.symbol_record.image.shape[0] * ratio))
+        new_image = cv2.resize(self.symbol_record.image, new_dimension, interpolation=cv2.INTER_AREA)
+        # new_image = cv2.bitwise_not(new_image)
         pil_image = Image.fromarray(new_image)
         image_tk = ImageTk.PhotoImage(pil_image)
         self.label.image = image_tk
         self.label.config(image=image_tk)
 
-        self.entry.delete(0)
-        if symbol_record.symbol is not None:
-            self.entry.insert(0, symbol_record.symbol)
+        self.entry.delete(0, 'end')
+        if self.symbol_record.text is not None:
+            self.entry.insert(0, self.symbol_record.text)
         self.entry.focus_set()
 
     def quit(self):
@@ -292,7 +328,7 @@ class TrainGUI:
 
 def train_symbols():
     root = Tk()
-    my_gui = TrainGUI(root, 'pokerstars_symbols.dat')
+    my_gui = TrainGUI(root, 'pokerstars_flags.dat')
     root.mainloop()
 
 

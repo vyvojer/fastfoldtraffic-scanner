@@ -3,3 +3,4 @@
 *.pyc
 *.log
 tests/*.dat
+log_pictures

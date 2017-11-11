@@ -100,7 +100,6 @@ class Client:
             top_window.close()
 
 
-
 class ClientWindow:
     def __init__(self, client, title_re=None):
         if title_re is None:
@@ -189,7 +188,7 @@ class ListField:
     STRING = 0
     FLOAT = 1
     INT = 2
-    GRAPHIC = 3
+    PICTURE = 3
 
     def __init__(self, name, left_x, right_x, dataset_name, field_type=STRING, value=None):
         self.name = name
@@ -201,8 +200,8 @@ class ListField:
 
     def __repr__(self):
         cls_name = self.__class__.__name__
-        repr_str = "{}(name={}, left_x={}, right_x={}, vlaue={})"
-        return repr_str.format(cls_name, self.name, self.left_x, self.right_x, self.value)
+        repr_str = "{}(name={}, left_x={}, right_x={}, dataset_name={}, vlaue={})"
+        return repr_str.format(cls_name, self.name, self.left_x, self.right_x, self.dataset_name, self.value)
 
     @property
     def parsed_value(self):
@@ -225,6 +224,8 @@ class ListField:
                 log.error("Cant convert '%s' to float", self.value)
                 return 0
         else:
+            if self.value is None:
+                log.warning("None in field %s", self.name)
             return self.value
 
     @classmethod
