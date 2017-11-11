@@ -149,7 +149,7 @@ class Osr:
             cv2.imwrite(image_path, picture_image)
             text = None
         else:
-            text = dataset.get_symbol_record(picture_image, max_difference=150).text
+            text = dataset.get_symbol_record(cropped_image, max_difference=150).text
         return text
 
     @staticmethod
