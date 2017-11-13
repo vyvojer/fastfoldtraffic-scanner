@@ -22,7 +22,7 @@ class ListRowTest(unittest.TestCase):
         cls.row_img_4 = Image.open('osr_data/row_4.png')
 
     def test_find_row(self):
-        list_row = ListRow(find_func=find_row, func_kwargs={'zone':(170, 171)})
+        list_row = ListRow(find_func=find_row, zone=(170, 171))
         list_row.find(pil_to_opencv(self.players_img_1))
         self.assertTrue(np.array_equal(list_row.image, pil_to_opencv(self.row_img_1)))
 

@@ -130,15 +130,15 @@ class ClientWindow:
 
 
 class ListRow:
-    def __init__(self, find_func, func_kwargs=None):
+    def __init__(self, find_func, **kwargs):
         self.image = None
         self.find_func = find_func
-        self.func_kwargs = func_kwargs
+        self.kwargs = kwargs
 
     def find(self, list_image):
         try:
             log.debug("Recognizing row...")
-            self.image = self.find_func(list_image, **self.func_kwargs)
+            self.image = self.find_func(list_image, **self.kwargs)
         except ValueError:
             log.error("Can't recognize row.", extra={'images': [(list_image, 'wrong-row')]})
             self.image = None
