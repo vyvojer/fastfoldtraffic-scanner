@@ -109,7 +109,7 @@ def find_row(image, **kwargs):
 def recognize_characters(row_image, **kwargs):
     log.info("Recognizing text...")
     zone = kwargs['zone']
-    dataset = kwargs['dataset']
+    library = kwargs['library']
     cropped_image = crop_image(row_image, None, None, zone[0], zone[1])
     gray_image = cv2.cvtColor(cropped_image, cv2.COLOR_BGR2GRAY)
     _, thresh = cv2.threshold(gray_image, 160, 255, cv2.THRESH_BINARY)
@@ -124,7 +124,7 @@ def recognize_characters(row_image, **kwargs):
     united_rects = _get_united(intersected_rects)
     for index, (x, y, w, h) in enumerate(united_rects):
         symbol_image = thresh[y:y + h, x:x + w]
-        was_created, symbol = dataset.get_symbol_record(symbol_image)
+        was_created, symbol = library.get_symbol_record(symbol_image)
         text += symbol.text
         if index > 0 and _check_space(united_rects[index - 1], (x, y, w, h)):
             text += ' '
@@ -133,7 +133,7 @@ def recognize_characters(row_image, **kwargs):
 
 def recognize_flag(row_image, **kwargs):
     zone = kwargs['zone']
-    library = kwargs['dataset']
+    library = kwargs['library']
     cropped_image = crop_image(row_image, None, None, zone[0], zone[1])
     flag_image = _distinguish_flag(cropped_image)
     if flag_image.shape != (16, 22, 3) and flag_image.shape != (16, 18, 3):
@@ -142,19 +142,23 @@ def recognize_flag(row_image, **kwargs):
                                                        ]})
         return None
     else:
-        was_created, symbol_record = _find_flag(flag_image, library)
+        was_created, image_record = _find_flag(flag_image, library)
         if was_created:
             logging.warning("Was created new record in flag dataset",
                             extra={'images':[
                                 (cropped_image, 'created-flag-row'),
                                 (flag_image, 'created-flag-distinguished'),
                             ]})
-        return symbol_record.text
-
+        elif image_record.text is None:
+            logging.warning("Flag record has None text",
+                            extra={'images':[
+                                (flag_image, 'created-flag-distinguished'),
+                            ]})
+        return image_record.text
 
 def _find_flag(flag_image, library: ImageLibrary):
-    was_created, symbol_record = library.get_symbol_record(flag_image, max_difference=120)
-    return was_created, symbol_record
+    was_created, image_record = library.get_symbol_record(flag_image, max_difference=120)
+    return was_created, image_record
 
 
 def _distinguish_flag(flag_field_image):

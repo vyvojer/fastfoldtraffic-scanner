@@ -2,11 +2,12 @@ import unittest
 
 import numpy as np
 from PIL import Image
-from scanner.ocr import _has_intersection, _unite_intersected, _get_united
+from scanner.ocr import _has_intersection, _unite_intersected, _get_united, _distinguish_flag, _find_flag
 from scanner.ocr import ImageRecord, find_row, recognize_characters, recognize_flag
 
 from scanner.client import *
 
+from flags import rus_array
 
 class TestIntersection(unittest.TestCase):
     def setUp(self):
@@ -157,25 +158,44 @@ class TestParsers(unittest.TestCase):
         self.assertEqual(raised.exception.args[0], "Can't recognize row")
 
     def test_recognize_text_entry(self):
-        dataset = ImageLibrary(records={(10, 6): [
+        library = ImageLibrary(records={(10, 6): [
             ImageRecord(self.img_of_2, '2'),
             ImageRecord(self.img_of_3, '3'),
         ]
         })
         kwargs = {'zone': (190, 220),
-                  'dataset': dataset}
+                  'library': library}
         text = recognize_characters(self.row_img_1, **kwargs)
         self.assertEqual(text, '2')
 
         kwargs = {'zone': (190, 220),
-                  'dataset': dataset}
+                  'library': library}
         text = recognize_characters(self.row_img_2, **kwargs)
         self.assertEqual(text, '3')
 
+    def test__find_flag(self):
+        library = ImageLibrary(records={(16, 22, 3): [ImageRecord(rus_array,'rus')]})
+        flag_image = _distinguish_flag(self.row_img_1[:, 140:170])
+        was_created, image_record = _find_flag(flag_image, library)
+        self.assertEqual(was_created, False)
+        self.assertEqual(image_record.text, 'rus')
+
+        # Brazil
+        flag_image = _distinguish_flag(self.row_img_2[:, 140:170])
+        was_created, image_record = _find_flag(flag_image, library)
+        self.assertEqual(was_created, True)
+        self.assertEqual(image_record.text, None)
+
+        # Another brazil
+        flag_image = _distinguish_flag(self.row_img_3[:, 140:170])
+        was_created, image_record = _find_flag(flag_image, library)
+        self.assertEqual(was_created, False)
+        self.assertEqual(image_record.text, None)
+
     def test_recognize_flag(self):
-        dataset = ImageLibrary('./osr_data/flags_test.dat')
+        library = ImageLibrary(records={(16, 22, 3): [ImageRecord(rus_array,'rus')]})
         kwargs = {'zone': (140, 170),
-                  'dataset': dataset,
-        }
+                  'library': library,
+                  }
         country = recognize_flag(self.row_img_1, **kwargs)
         self.assertEqual(country, 'rus')
