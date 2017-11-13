@@ -2,7 +2,8 @@ import unittest
 
 import numpy as np
 from PIL import Image
-from scanner.osr import *
+from scanner.ocr import _has_intersection, _unite_intersected, _get_united
+from scanner.ocr import ImageRecord, find_row, recognize_characters, recognize_flag
 
 from scanner.client import *
 
@@ -20,25 +21,25 @@ class TestIntersection(unittest.TestCase):
                             (42, 10, 7, 7)]
 
     def test_intersection(self):
-        self.assertFalse(Osr._has_intersection(self.bound_rects[0], self.bound_rects[1]))
-        self.assertTrue(Osr._has_intersection(self.bound_rects[1], self.bound_rects[2]))
-        self.assertFalse(Osr._has_intersection(self.bound_rects[2], self.bound_rects[3]))
-        self.assertFalse(Osr._has_intersection(self.bound_rects[3], self.bound_rects[4]))
-        self.assertFalse(Osr._has_intersection(self.bound_rects[4], self.bound_rects[5]))
-        self.assertTrue(Osr._has_intersection(self.bound_rects[5], self.bound_rects[6]))
-        self.assertFalse(Osr._has_intersection(self.bound_rects[6], self.bound_rects[7]))
-        self.assertFalse(Osr._has_intersection(self.bound_rects[7], self.bound_rects[8]))
+        self.assertFalse(_has_intersection(self.bound_rects[0], self.bound_rects[1]))
+        self.assertTrue(_has_intersection(self.bound_rects[1], self.bound_rects[2]))
+        self.assertFalse(_has_intersection(self.bound_rects[2], self.bound_rects[3]))
+        self.assertFalse(_has_intersection(self.bound_rects[3], self.bound_rects[4]))
+        self.assertFalse(_has_intersection(self.bound_rects[4], self.bound_rects[5]))
+        self.assertTrue(_has_intersection(self.bound_rects[5], self.bound_rects[6]))
+        self.assertFalse(_has_intersection(self.bound_rects[6], self.bound_rects[7]))
+        self.assertFalse(_has_intersection(self.bound_rects[7], self.bound_rects[8]))
 
     def test_intesection_touched(self):
         rect = (58, 10, 7, 7)
         next_rect = (65, 10, 7, 10)
-        self.assertFalse(Osr._has_intersection(rect, next_rect))
+        self.assertFalse(_has_intersection(rect, next_rect))
 
     def test_unite_intersected(self):
         rect = self.bound_rects[1]
         next_rect = self.bound_rects[2]
         united = (13, 7, 1, 10)
-        self.assertEqual(Osr._unite_intersected(rect, next_rect), united)
+        self.assertEqual(_unite_intersected(rect, next_rect), united)
 
     def test_get_united_Diotima(self):
         united = [(3, 7, 8, 10),
@@ -48,7 +49,7 @@ class TestIntersection(unittest.TestCase):
                   (28, 7, 1, 10),
                   (31, 10, 9, 7),
                   (42, 10, 7, 7)]
-        self.assertEqual(Osr._get_united(self.bound_rects), united)
+        self.assertEqual(_get_united(self.bound_rects), united)
 
     def test_get_united_Devanssay(self):
         intersected = [(3, 7, 8, 10),
@@ -60,7 +61,7 @@ class TestIntersection(unittest.TestCase):
                        (51, 10, 5, 7),
                        (58, 10, 7, 7),
                        (65, 10, 7, 10)]
-        self.assertEqual(Osr._get_united(intersected), intersected)
+        self.assertEqual(_get_united(intersected), intersected)
 
 
 class SymbolsDatasetTest(unittest.TestCase):
@@ -89,20 +90,20 @@ class SymbolsDatasetTest(unittest.TestCase):
                                  [0, 255, 255, 255, 255, 0]], dtype=np.uint8)
 
     def test_save_load(self):
-        sd = SymbolsDataset('symbols_test.dat')
-        sd.symbols = {'pu': 'tu'}
-        sd.save_dataset()
-        sd2 = SymbolsDataset('symbols_test.dat')
-        sd2.load_dataset()
-        self.assertEqual(sd2.symbols['pu'], 'tu')
+        sd = ImageLibrary('symbols_test.dat')
+        sd.records = {'pu': 'tu'}
+        sd.save_library()
+        sd2 = ImageLibrary('symbols_test.dat')
+        sd2.load_library()
+        self.assertEqual(sd2.records['pu'], 'tu')
 
     def test_recognize_symbol(self):
-        dataset = SymbolsDataset(symbols={(10, 6): [SymbolRecord(self.img_of_2, '2')]})
-        symbol = dataset.get_symbol_record(self.img_of_2).text
-        self.assertEqual(symbol, '2')
+        dataset = ImageLibrary(records={(10, 6): [ImageRecord(self.img_of_2, '2')]})
+        _, symbol_record = dataset.get_symbol_record(self.img_of_2)
+        self.assertEqual(symbol_record.text, '2')
 
     def test__iter_(self):
-        dataset = SymbolsDataset()
+        dataset = ImageLibrary()
         dataset.get_symbol_record(self.img_of_2)
         dataset.get_symbol_record(self.img_of_3)
         symbols = [symbol.image for symbol in dataset]
@@ -111,15 +112,18 @@ class SymbolsDatasetTest(unittest.TestCase):
         self.assertIn(self.img_of_2, symbols)
 
 
-class OsrTest(unittest.TestCase):
+class TestParsers(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.test_players_img_1 = Image.open('osr_data/test_players_1.png')
-        cls.test_players_img_2 = Image.open('osr_data/test_players_2.png')
-        cls.test_players_img_3 = Image.open('osr_data/test_players_3.png')
-        cls.test_players_img_4 = Image.open('osr_data/test_players_4.png')
-        cls.test_players_img_empty_list = Image.open('osr_data/test_players_empty_list.png')
-        cls.players_cursor = (170, 171)
+        cls.players_img_1 = pil_to_opencv(Image.open('osr_data/players_1.png'))
+        cls.players_img_2 = pil_to_opencv(Image.open('osr_data/players_2.png'))
+        cls.players_img_3 = pil_to_opencv(Image.open('osr_data/players_3.png'))
+        cls.players_img_4 = pil_to_opencv(Image.open('osr_data/players_4.png'))
+        cls.players_list_empty = pil_to_opencv(Image.open('osr_data/players_empty_list.png'))
+        cls.row_img_1 = pil_to_opencv(Image.open('osr_data/row_1.png'))
+        cls.row_img_2 = pil_to_opencv(Image.open('osr_data/row_2.png'))
+        cls.row_img_3 = pil_to_opencv(Image.open('osr_data/row_3.png'))
+        cls.row_img_4 = pil_to_opencv(Image.open('osr_data/row_4.png'))
         cls.img_of_2 = np.array([[0, 255, 255, 255, 255, 0],
                                  [255, 0, 0, 0, 0, 255],
                                  [255, 0, 0, 0, 0, 255],
@@ -130,6 +134,7 @@ class OsrTest(unittest.TestCase):
                                  [0, 255, 0, 0, 0, 0],
                                  [255, 0, 0, 0, 0, 0],
                                  [255, 255, 255, 255, 255, 255]], dtype=np.uint8)
+
         cls.img_of_3 = np.array([[0, 255, 255, 255, 255, 0],
                                  [255, 0, 0, 0, 0, 255],
                                  [255, 0, 0, 0, 0, 255],
@@ -139,96 +144,38 @@ class OsrTest(unittest.TestCase):
                                  [0, 0, 0, 0, 0, 255],
                                  [255, 0, 0, 0, 0, 255],
                                  [255, 0, 0, 0, 0, 255],
-                                 [0, 255, 255, 255, 255, 0]]
-                                , dtype=np.uint8)
+                                 [0, 255, 255, 255, 255, 0]], dtype=np.uint8)
 
-    def test_players_cursor(self):
-        osr = Osr(self.test_players_img_1, cursor=self.players_cursor, fields=[], dataset_dict={})
-        top, bottom = osr._recognize_cursor()
-        self.assertEqual(top, 0)
-        self.assertEqual(bottom, 20)
-
-        osr = Osr(self.test_players_img_2, cursor=self.players_cursor, fields=[], dataset_dict={})
-        top, bottom = osr._recognize_cursor()
-        self.assertEqual(top, 21)
-        self.assertEqual(bottom, 41)
-
-        osr = Osr(self.test_players_img_3, cursor=self.players_cursor, fields=[], dataset_dict={})
-        top, bottom = osr._recognize_cursor()
-        self.assertEqual(top, 42)
-        self.assertEqual(bottom, 62)
-
-        osr = Osr(self.test_players_img_4, cursor=self.players_cursor, fields=[], dataset_dict={})
-        top, bottom = osr._recognize_cursor()
-        self.assertEqual(top, 399)
-        self.assertEqual(bottom, 419)
-
-    def test_players_cursor_with_empty_list(self):
-        osr = Osr(self.test_players_img_empty_list, cursor=self.players_cursor, fields=[], dataset_dict={})
+    def test_find_row(self):
+        zone = {'zone': (170, 171)}
+        self.assertTrue(np.array_equal(find_row(self.players_img_1, **zone), self.row_img_1))
+        self.assertTrue(np.array_equal(find_row(self.players_img_2, **zone), self.row_img_2))
+        self.assertTrue(np.array_equal(find_row(self.players_img_3, **zone), self.row_img_3))
+        self.assertTrue(np.array_equal(find_row(self.players_img_4, **zone), self.row_img_4))
         with self.assertRaises(ValueError) as raised:
-            top, bottom = osr._recognize_cursor()
-        self.assertEqual(raised.exception.args[0], "Can't recognize cursor")
+            find_row(self.players_list_empty, **zone)
+        self.assertEqual(raised.exception.args[0], "Can't recognize row")
 
-    def test_recognize_text(self):
-        dataset = SymbolsDataset(symbols={(10, 6): [SymbolRecord(self.img_of_2, '2')]})
-        osr = Osr(self.test_players_img_1, cursor=self.players_cursor, fields=[], dataset_dict={})
-        text = osr._recognize_text(osr.gray_image[0:20, 190:220], dataset)
+    def test_recognize_text_entry(self):
+        dataset = ImageLibrary(records={(10, 6): [
+            ImageRecord(self.img_of_2, '2'),
+            ImageRecord(self.img_of_3, '3'),
+        ]
+        })
+        kwargs = {'zone': (190, 220),
+                  'dataset': dataset}
+        text = recognize_characters(self.row_img_1, **kwargs)
         self.assertEqual(text, '2')
 
-    def test_recognize_picture(self):
-        dataset = SymbolsDataset()
-        rus_flag = pil_to_opencv(self.test_players_img_1)[0:20, 144:168]
-        bra_flag_1 = pil_to_opencv(self.test_players_img_2)[21:41, 144:168]
-        bra_flag_2 = pil_to_opencv(self.test_players_img_3)[42:62, 144:168]
-        bra_flag_3 = pil_to_opencv(self.test_players_img_4)[399:419, 144:168]
-        Osr._recognize_picture(rus_flag, dataset)
-        symbols = [symbol_record for symbol_record in dataset]
-        symbols[0].text = 'rus'
-        Osr._recognize_picture(bra_flag_2, dataset)
-        symbols = [symbol_record for symbol_record in dataset if symbol_record.text is None]
-        symbols[0].text = 'bra'
-        self.assertEqual(Osr._recognize_picture(rus_flag, dataset), 'rus')
-        self.assertEqual(Osr._recognize_picture(bra_flag_1, dataset), 'bra')
-        self.assertEqual(Osr._recognize_picture(bra_flag_2, dataset), 'bra')
-        self.assertEqual(Osr._recognize_picture(bra_flag_3, dataset), 'bra')
+        kwargs = {'zone': (190, 220),
+                  'dataset': dataset}
+        text = recognize_characters(self.row_img_2, **kwargs)
+        self.assertEqual(text, '3')
 
-    def test_recognize_fields(self):
-        dataset = SymbolsDataset(symbols={(10, 6): [SymbolRecord(self.img_of_2, '2'),
-                                                    SymbolRecord(self.img_of_3, '3')]})
-        dataset_dict = {'default': dataset}
-        entry_field = ListItem('entries', 190, 220, dataset_name='default')
-        osr = Osr(self.test_players_img_1, cursor=self.players_cursor, fields=[entry_field], dataset_dict=dataset_dict)
-        osr.recognize_fields()
-        self.assertEqual(entry_field.value, '2')
-
-    def test_recognize_fields_with_text_and_picture(self):
-        pic_dataset = SymbolsDataset()
-        rus_flag = pil_to_opencv(self.test_players_img_1)[0:20, 144:168]
-        bra_flag_1 = pil_to_opencv(self.test_players_img_2)[21:41, 144:168]
-        bra_flag_2 = pil_to_opencv(self.test_players_img_3)[42:62, 144:168]
-        bra_flag_3 = pil_to_opencv(self.test_players_img_4)[399:419, 144:168]
-        Osr._recognize_picture(rus_flag, pic_dataset)
-        symbols = [symbol_record for symbol_record in pic_dataset]
-        symbols[0].text = 'rus'
-        Osr._recognize_picture(bra_flag_2, pic_dataset)
-        symbols = [symbol_record for symbol_record in pic_dataset if symbol_record.text is None]
-        symbols[0].text = 'bra'
-        char_dataset = SymbolsDataset(symbols={(10, 6): [SymbolRecord(self.img_of_2, '2'),
-                                                         SymbolRecord(self.img_of_3, '3')]})
-        dataset_dict = {'default': char_dataset, 'flags': pic_dataset}
-        entry_field = ListItem('entries', 190, 220, dataset_name='default')
-        flag_field = ListItem('country', 144, 168, dataset_name='flags', field_type=ListItem.PICTURE)
-        osr = Osr(self.test_players_img_1,
-                  cursor=self.players_cursor,
-                  fields=[entry_field, flag_field],
-                  dataset_dict=dataset_dict)
-        osr.recognize_fields()
-        self.assertEqual(entry_field.value, '2')
-        self.assertEqual(flag_field.value, 'rus')
-        osr = Osr(self.test_players_img_2,
-                  cursor=self.players_cursor,
-                  fields=[entry_field, flag_field],
-                  dataset_dict=dataset_dict)
-        osr.recognize_fields()
-        self.assertEqual(entry_field.value, '3')
-        self.assertEqual(flag_field.value, 'bra')
+    def test_recognize_flag(self):
+        dataset = ImageLibrary('./osr_data/flags_test.dat')
+        kwargs = {'zone': (140, 170),
+                  'dataset': dataset,
+        }
+        country = recognize_flag(self.row_img_1, **kwargs)
+        self.assertEqual(country, 'rus')

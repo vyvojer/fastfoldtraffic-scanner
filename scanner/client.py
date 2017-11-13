@@ -3,22 +3,16 @@ import logging.config
 import re
 
 from PIL import Image
-import numpy as np
 from pywinauto import clipboard
 from pywinauto.application import Application, ProcessNotFoundError, AppStartError
 import win32gui
 
-from scanner.osr import Osr, SymbolsDataset, ImageLogger
+from scanner.ocr import pil_to_opencv, crop_image, ImageLibrary, ImageLogger
 from scanner import settings
 
 logging.config.dictConfig(settings.logging_config)
 logging.setLoggerClass(ImageLogger)
 log = logging.getLogger(__name__)
-
-
-def pil_to_opencv(pil_image: Image):
-    open_cv_image = np.array(pil_image.convert('RGB'))
-    return open_cv_image
 
 
 class Client:
@@ -64,7 +58,7 @@ class Client:
         self.move_main_window()
         self.dataset_dict = {}
         for key, value in settings.pokerstars['dataset'].items():
-            self.dataset_dict[key] = SymbolsDataset(value)
+            self.dataset_dict[key] = ImageLibrary(value)
         self.player_list = ClientList(self.main_window,
                                       settings.pokerstars['player_list'],
                                       cursor=settings.pokerstars['player_list_cursor_zone'],
@@ -100,7 +94,7 @@ class Client:
     def save_datasets(self):
         if self.dataset_dict:
             for dataset in self.dataset_dict.values():
-                dataset.save_dataset()
+                dataset.save_library()
 
     def close_not_main_windows(self):
         top_window = ClientWindow(self)
@@ -143,13 +137,13 @@ class ListRow:
 
     def find(self, list_image):
         try:
-            log.info("Recognizing row...")
+            log.debug("Recognizing row...")
             self.image = self.find_func(list_image, **self.func_kwargs)
         except ValueError:
-            log.error("Can't recognize row.", extra={'img': list_image, 'prefix': 'wrong-row'})
+            log.error("Can't recognize row.", extra={'images': [(list_image, 'wrong-row')]})
             self.image = None
         else:
-            log.debug("Row was recognized.", extra={'img': self.image, 'prefix': 'row'})
+            log.debug("Row was recognized.", extra={'images': [(list_image, 'row')]})
 
 
 class ClientList:
@@ -184,16 +178,14 @@ class ClientList:
         self.control.type_keys('^c')
         self.value = clipboard.GetData()
         if self.fields is not None and self.cursor is not None:
-            self.get_fields()
+            self.get_items()
         return self.value
 
-    def get_fields(self):
-        pil_image = self.capture_as_image()
-        osr = Osr(pil_image, self.cursor, self.fields, self.dataset_dict)
-        try:
-            osr.recognize_fields()
-        except Exception:
-            log.error("Can't recognize fields", exc_info=True)
+    def get_items(self):
+        self.capture_as_image()
+        self.row.find(self.image)
+        for field in self.fields:
+            pass
 
     def get_next(self):
         self.previous_value = self.value
@@ -207,64 +199,40 @@ class ClientList:
         return self.value
 
     def capture_as_image(self):
-        return self.control.capture_as_image()
+        self.set_pil_image(self.control.capture_as_image())
 
     def set_pil_image(self, pil_image: Image):
         self.image = pil_to_opencv(pil_image)
 
 
 class ListItem:
-    STRING = 0
-    FLOAT = 1
-    INT = 2
-    PICTURE = 3
-
-    def __init__(self, name, left_x, right_x, dataset_name, field_type=STRING, value=None):
+    def __init__(self, name, x1=0, x2=0, recognizer=None, parser=None, dataset_name=None):
         self.name = name
-        self.left_x = left_x
-        self.right_x = right_x
-        self.field_type = field_type
+        self.x1 = x1
+        self.x2 = x2
+        self.recognizer = recognizer
+        self.parser = parser
         self.dataset_name = dataset_name
-        self.value = value
+        self.value = None
 
     def __repr__(self):
         cls_name = self.__class__.__name__
-        repr_str = "{}(name={}, left_x={}, right_x={}, dataset_name={}, vlaue={})"
-        return repr_str.format(cls_name, self.name, self.left_x, self.right_x, self.dataset_name, self.value)
+        repr_str = "{}(name={}, x1={}, x2={}, recognizer={}, parser={}, dataset_name={})"
+        return repr_str.format(cls_name, self.name, self.x1, self.x2,
+                               self.recognizer.__name__, self.parser.__name__, self.dataset_name)
 
-    @property
-    def parsed_value(self):
-        if self.field_type == self.INT:
-            if self.value == '':
-                return 0
-            int_str = ''.join(re.findall(r'\d', self.value))
-            try:
-                return int(int_str)
-            except ValueError:
-                log.error("Cant convert '%s' to int", self.value)
-                return 0
-        elif self.field_type == self.FLOAT:
-            if self.value == '':
-                return 0
-            int_str = ''.join(re.findall(r'\d|\.', self.value))
-            try:
-                return float(int_str)
-            except ValueError:
-                log.error("Cant convert '%s' to float", self.value)
-                return 0
-        else:
-            if self.value is None:
-                log.warning("None in field %s", self.name)
-            return self.value
+    def recognize(self):
+        pass
 
     @classmethod
     def from_dict(cls, field_dict):
         name = field_dict['name']
-        left_x = field_dict['left_x']
-        right_x = field_dict['right_x']
-        dataset_name = field_dict.get('dataset_name', 'default')
-        field_type = eval("ListField.{}".format(field_dict.get('field_type')))
-        return cls(name, left_x, right_x, dataset_name, field_type=field_type)
+        x1 = field_dict['x1']
+        x2 = field_dict['x2']
+        recognizer = field_dict.get('recognizer')
+        parser = field_dict.get('parser')
+        dataset_name = field_dict.get('dataset_name')
+        return cls(name, x1=x1, x2=x2, recognizer=recognizer, parser=parser, dataset_name=dataset_name)
 
     @classmethod
     def fields_from_dict(cls, fields_list):
@@ -272,3 +240,23 @@ class ListItem:
         for field in fields_list:
             fields.append(ListItem.from_dict(field))
         return fields
+
+
+def int_parser(initial_value):
+    if initial_value == '':
+        return 0
+    int_str = ''.join(re.findall(r'\d', initial_value))
+    try:
+        return int(int_str)
+    except ValueError:
+        log.error("Cant convert '%s' to int", initial_value)
+
+
+def float_parser(initial_value):
+    if initial_value == '':
+        return 0
+    float_str = ''.join(re.findall(r'\d|\.', initial_value))
+    try:
+        return float(float_str)
+    except ValueError:
+        log.error("Cant convert '%s' to float", initial_value)
