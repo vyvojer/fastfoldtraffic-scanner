@@ -1,7 +1,6 @@
 import logging
 import logging.config
 import re
-import time
 
 from PIL import Image
 import numpy as np
@@ -9,10 +8,11 @@ from pywinauto import clipboard
 from pywinauto.application import Application, ProcessNotFoundError, AppStartError
 import win32gui
 
-from scanner.osr import Osr, SymbolsDataset, save_image
+from scanner.osr import Osr, SymbolsDataset, ImageLogger
 from scanner import settings
 
 logging.config.dictConfig(settings.logging_config)
+logging.setLoggerClass(ImageLogger)
 log = logging.getLogger(__name__)
 
 
@@ -146,14 +146,10 @@ class ListRow:
             log.info("Recognizing row...")
             self.image = self.find_func(list_image, **self.func_kwargs)
         except ValueError:
-            tick = time.time()
-            img_name = "wrong-row-{}.png".format(tick)
-            log_message = "Can't recognize row. The image will saved under name '{}'".format(img_name)
-            log.error(log_message)
-            save_image(list_image, img_name, log)
+            log.error("Can't recognize row.", extra={'img': list_image, 'prefix': 'wrong-row'})
             self.image = None
         else:
-            pass
+            log.debug("Row was recognized.", extra={'img': self.image, 'prefix': 'row'})
 
 
 class ClientList:

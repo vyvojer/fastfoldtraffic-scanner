@@ -17,10 +17,18 @@ log = logging.getLogger(__name__)
 logging.getLogger('PIL').setLevel(logging.WARNING)
 
 
-def save_image(image, name, logger, log_level=logging.ERROR):
-    """ Save image under name to log picture dir"""
-    if logger.getEffectiveLevel() <= log_level:
-        cv2.imwrite(os.path.join(settings.log_picture_path, "{}".format(name)), image)
+class ImageLogger(logging.Logger):
+    """ Extended logger, that saving opencv images if extra has 'img' and 'prefix_name' """
+
+    def _log(self, level, msg, args, exc_info=None, extra=None, stack_info=False):
+        if extra:
+            img = extra.get('img')
+            prefix = extra.get('prefix')
+            if img is not None and prefix is not None:
+                img_name = "{}-{}.png".format(prefix, time.time())
+                msg += " The image will saved under name {}".format(img_name)
+                cv2.imwrite(os.path.join(settings.log_picture_path,img_name), img)
+        super()._log(level, msg, args, exc_info, extra, stack_info)
 
 
 class SymbolRecord:

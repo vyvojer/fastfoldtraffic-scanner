@@ -30,7 +30,7 @@ logging_config = {
     },
     'loggers': {
         '': {
-            'level': logging.WARNING,
+            'level': logging.DEBUG,
             'handlers': ['console', 'file']
         }
     },
