@@ -22,7 +22,7 @@ logging_config = {
         'file': {
             'level': logging.DEBUG,
             'class': 'logging.FileHandler',
-            'mode': 'w',
+            'mode': 'a',
             'formatter': 'default',
             'filename': log_path,
 

@@ -1,114 +1,51 @@
 import unittest
 
-from scan.osr import *
+import numpy as np
+from PIL import Image
 
-from scanner.client import *
-
-
-class ClientTest(unittest.TestCase):
-
-    def setUp(self):
-        self.VALID_PATH = r'C:\Program Files (x86)\PokerStars\PokerStars.exe'
-        self.INVALID_PATH = r'C:\Program Files (x86)\PokerStars\PokerStarss.exe'
-
-    def test_connect_or_start(self):
-        ps = Client(self.VALID_PATH)
-        self.assertTrue(ps.connect_or_start())
-        self.assertTrue(ps.app.is_process_running())
-
-    def test_is_running(self):
-        ps = Client()
-        ps.connect_or_start()
-        self.assertTrue(ps.is_running())
+from scanner.client import ListRow, pil_to_opencv
+from scanner.osr import find_row
 
 
-class WindowTest(unittest.TestCase):
-
-    def setUp(self):
-        self.client = Client()
-        self.client.connect_or_start()
-
-    def test__init(self):
-        mw = ClientWindow(self.client, "PokerStars Lobby")
-        tw = ClientWindow(self.client)
-        self.assertEqual(mw.title, tw.title)
-
-    def test__eq__(self):
-        tw1 = ClientWindow.from_control(self.client, self.client.app.top_window())
-        tw2 = ClientWindow.from_control(self.client, self.client.app.top_window())
-
-        self.assertEqual(tw1, tw2)
-
-
-class ListFieldTest(unittest.TestCase):
-
-    def test_character(self):
-        field = ListField('name', 0, 0, None, value='2.90')
-        self.assertEqual(field.parsed_value, '2.90')
-
-    def test_int(self):
-        field = ListField('name', 0, 0, None, field_type=ListField.INT, value='20')
-        self.assertEqual(field.parsed_value, 20)
-
-        field = ListField('name', 0, 0, None, field_type=ListField.INT, value='2.9s')
-        self.assertEqual(field.parsed_value, 29)
-
-        field = ListField('name', 0, 0, None, field_type=ListField.INT, value='s')
-        self.assertEqual(field.parsed_value, 0)
-
-    def test_float(self):
-        field = ListField('name', 0, 0, None, field_type=ListField.FLOAT, value='2.90')
-        self.assertEqual(field.parsed_value, 2.9)
-
-        field = ListField('name', 0, 0, None, field_type=ListField.FLOAT, value='2.9s')
-        self.assertEqual(field.parsed_value, 2.9)
-
-        field = ListField('name', 0, 0, None, field_type=ListField.FLOAT, value='s')
-        self.assertEqual(field.parsed_value, 0)
-
-    def test_from_dict(self):
-        field_dict = {
-            'name': 'entries',
-            'left_x': 190,
-            'right_x': 220,
-            'field_type': 'INT'
-        }
-        field = ListField.from_dict(field_dict)
-        self.assertEqual(field.name, 'entries')
-        self.assertEqual(field.left_x, 190)
-        self.assertEqual(field.right_x, 220)
-        self.assertEqual(field.dataset_name, 'default')
-        self.assertEqual(field.field_type, ListField.INT)
-
-
-class ListTest(unittest.TestCase):
+class ListRowTest(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        client = Client()
-        client.prepare()
-        cls.main_window =  ClientWindow(client, title_re='PokerStars Lobby')
+        cls.players_list_img_1 = Image.open('osr_data/test_players_1.png')
+        cls.players_list_img_2 = Image.open('osr_data/test_players_2.png')
+        cls.players_list_img_3 = Image.open('osr_data/test_players_3.png')
+        cls.players_list_img_4 = Image.open('osr_data/test_players_4.png')
+        cls.players_list_empty = Image.open('osr_data/test_players_empty_list.png')
+        cls.row_img_1 = Image.open('osr_data/row_1.png')
+        cls.row_img_2 = Image.open('osr_data/row_2.png')
+        cls.row_img_3 = Image.open('osr_data/row_3.png')
+        cls.row_img_4 = Image.open('osr_data/row_4.png')
 
-    def test__init__(self):
-        player_list = ClientList(self.main_window, 'PokerStarsList2')
+    def test_find_row(self):
+        list_row = ListRow(find_func=find_row, func_kwargs={'zone':(170,171)})
+        list_row.find(pil_to_opencv(self.players_list_img_1))
+        self.assertTrue(np.array_equal(list_row.image, pil_to_opencv(self.row_img_1)))
 
-    def test_get_next(self):
-        player_list = ClientList(self.main_window, 'PokerStarsList2')
-        first_value = player_list.reset()
-        self.assertEqual(player_list.has_next, True)
-        self.assertEqual(first_value, player_list.value)
-        second_value = player_list.get_next()
-        self.assertEqual(second_value, player_list.value)
-        self.assertEqual(first_value, player_list.previous_value)
+        list_row.find(pil_to_opencv(self.players_list_img_2))
+        self.assertTrue(np.array_equal(list_row.image, pil_to_opencv(self.row_img_2)))
 
-    def test_has_next(self):
-        player_list = ClientList(self.main_window, 'PokerStarsList2')
-        player_list.control.type_keys('^{END}')
-        player_list.get_value()
-        self.assertEqual(player_list.has_next, True)
-        player_list.get_next()
-        self.assertEqual(player_list.has_next, False)
+        list_row.find(pil_to_opencv(self.players_list_img_3))
+        self.assertTrue(np.array_equal(list_row.image, pil_to_opencv(self.row_img_3)))
+
+        list_row.find(pil_to_opencv(self.players_list_img_4))
+        self.assertTrue(np.array_equal(list_row.image, pil_to_opencv(self.row_img_4)))
+
+        list_row.find(pil_to_opencv(self.players_list_empty))
+        self.assertEqual(list_row.image, None)
 
 
+class ClientListTest(unittest.TestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        cls.test_players_img_1 = Image.open('osr_data/test_players_1.png')
+        cls.test_players_img_2 = Image.open('osr_data/test_players_2.png')
+        cls.test_players_img_3 = Image.open('osr_data/test_players_3.png')
+        cls.test_players_img_4 = Image.open('osr_data/test_players_4.png')
 
 

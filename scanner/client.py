@@ -1,16 +1,24 @@
 import logging
 import logging.config
 import re
-import win32gui
+import time
 
+from PIL import Image
+import numpy as np
 from pywinauto import clipboard
 from pywinauto.application import Application, ProcessNotFoundError, AppStartError
-from scanner.osr import Osr, SymbolsDataset
+import win32gui
 
+from scanner.osr import Osr, SymbolsDataset, save_image
 from scanner import settings
 
 logging.config.dictConfig(settings.logging_config)
 log = logging.getLogger(__name__)
+
+
+def pil_to_opencv(pil_image: Image):
+    open_cv_image = np.array(pil_image.convert('RGB'))
+    return open_cv_image
 
 
 class Client:
@@ -60,12 +68,12 @@ class Client:
         self.player_list = ClientList(self.main_window,
                                       settings.pokerstars['player_list'],
                                       cursor=settings.pokerstars['player_list_cursor_zone'],
-                                      fields=ListField.fields_from_dict(settings.pokerstars['player_fields']),
+                                      fields=ListItem.fields_from_dict(settings.pokerstars['player_fields']),
                                       dataset_dict=self.dataset_dict)
         self.table_list = ClientList(self.main_window,
                                      settings.pokerstars['table_list'],
                                      cursor=settings.pokerstars['table_list_cursor_zone'],
-                                     fields=ListField.fields_from_dict(settings.pokerstars['table_fields']),
+                                     fields=ListItem.fields_from_dict(settings.pokerstars['table_fields']),
                                      dataset_dict=self.dataset_dict)
         self.close_not_main_windows()
 
@@ -127,6 +135,27 @@ class ClientWindow:
         self.control.close()
 
 
+class ListRow:
+    def __init__(self, find_func, func_kwargs=None):
+        self.image = None
+        self.find_func = find_func
+        self.func_kwargs = func_kwargs
+
+    def find(self, list_image):
+        try:
+            log.info("Recognizing row...")
+            self.image = self.find_func(list_image, **self.func_kwargs)
+        except ValueError:
+            tick = time.time()
+            img_name = "wrong-row-{}.png".format(tick)
+            log_message = "Can't recognize row. The image will saved under name '{}'".format(img_name)
+            log.error(log_message)
+            save_image(list_image, img_name, log)
+            self.image = None
+        else:
+            pass
+
+
 class ClientList:
     def __init__(self, window, control_name, cursor=None, fields=None, dataset_dict=None):
         self.control = window.control[control_name]
@@ -136,7 +165,8 @@ class ClientList:
         self.cursor = cursor
         self.fields = fields
         self.dataset_dict = dataset_dict
-#        self.reset()
+        self.image = None
+        self.row: ListRow = None
 
     def __iter__(self):
         self.reset()
@@ -183,8 +213,11 @@ class ClientList:
     def capture_as_image(self):
         return self.control.capture_as_image()
 
+    def set_pil_image(self, pil_image: Image):
+        self.image = pil_to_opencv(pil_image)
 
-class ListField:
+
+class ListItem:
     STRING = 0
     FLOAT = 1
     INT = 2
@@ -241,5 +274,5 @@ class ListField:
     def fields_from_dict(cls, fields_list):
         fields = []
         for field in fields_list:
-            fields.append(ListField.from_dict(field))
+            fields.append(ListItem.from_dict(field))
         return fields

@@ -17,6 +17,12 @@ log = logging.getLogger(__name__)
 logging.getLogger('PIL').setLevel(logging.WARNING)
 
 
+def save_image(image, name, logger, log_level=logging.ERROR):
+    """ Save image under name to log picture dir"""
+    if logger.getEffectiveLevel() <= log_level:
+        cv2.imwrite(os.path.join(settings.log_picture_path, "{}".format(name)), image)
+
+
 class SymbolRecord:
     def __init__(self, image, text):
         self.image = image
@@ -64,6 +70,23 @@ class SymbolsDataset:
 
     def save_dataset(self):
         pickle.dump(self.symbols, open(self.file, 'wb'))
+
+
+def find_row(image, **kwargs):
+    """ Find current row in PokerStars list """
+    zone = kwargs['zone']
+    gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    cropped_image = gray_image[:, zone[0]:zone[1]]
+    _, thresh_image = cv2.threshold(cropped_image, 200, 255, cv2.THRESH_BINARY_INV)
+    _, contours, _ = cv2.findContours(thresh_image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    if len(contours) == 1:
+        [x, y, w, h] = cv2.boundingRect(contours[0])
+    else:
+        raise ValueError("Can't recognize row")
+    row_top = y
+    row_bottom = y + h
+    return image[row_top:row_bottom, :]
+
 
 
 class Osr:

@@ -196,7 +196,7 @@ class OsrTest(unittest.TestCase):
         dataset = SymbolsDataset(symbols={(10, 6): [SymbolRecord(self.img_of_2, '2'),
                                                     SymbolRecord(self.img_of_3, '3')]})
         dataset_dict = {'default': dataset}
-        entry_field = ListField('entries', 190, 220, dataset_name='default')
+        entry_field = ListItem('entries', 190, 220, dataset_name='default')
         osr = Osr(self.test_players_img_1, cursor=self.players_cursor, fields=[entry_field], dataset_dict=dataset_dict)
         osr.recognize_fields()
         self.assertEqual(entry_field.value, '2')
@@ -216,8 +216,8 @@ class OsrTest(unittest.TestCase):
         char_dataset = SymbolsDataset(symbols={(10, 6): [SymbolRecord(self.img_of_2, '2'),
                                                          SymbolRecord(self.img_of_3, '3')]})
         dataset_dict = {'default': char_dataset, 'flags': pic_dataset}
-        entry_field = ListField('entries', 190, 220, dataset_name='default')
-        flag_field = ListField('country', 144, 168, dataset_name='flags', field_type=ListField.PICTURE)
+        entry_field = ListItem('entries', 190, 220, dataset_name='default')
+        flag_field = ListItem('country', 144, 168, dataset_name='flags', field_type=ListItem.PICTURE)
         osr = Osr(self.test_players_img_1,
                   cursor=self.players_cursor,
                   fields=[entry_field, flag_field],

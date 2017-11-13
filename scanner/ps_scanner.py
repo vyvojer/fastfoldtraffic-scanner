@@ -66,6 +66,7 @@ class Scanner:
                     self.scan_tables()
                 except Exception:
                     log.error("Exception during scan", exc_info=True)
+                self.client.save_datasets()
                 time.sleep(30)
         except KeyboardInterrupt:
             print("You pressed Ctrl+C")
@@ -81,6 +82,5 @@ class Scanner:
 
 if __name__ == '__main__':
     s = Scanner()
-   # s.main_loop()
-    s.scan_tables()
-    s.client.save_datasets()
+    s.main_loop()
+
