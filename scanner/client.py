@@ -7,7 +7,7 @@ from pywinauto import clipboard
 from pywinauto.application import Application, ProcessNotFoundError, AppStartError
 import win32gui
 
-from scanner.ocr import pil_to_opencv, crop_image, ImageLibrary, ImageLogger
+from scanner.ocr import pil_to_opencv, ImageLibrary, ImageLogger
 from scanner import settings
 
 logging.config.dictConfig(settings.logging_config)
@@ -206,33 +206,31 @@ class ClientList:
 
 
 class ListItem:
-    def __init__(self, name, x1=0, x2=0, recognizer=None, parser=None, dataset_name=None):
+    def __init__(self, name, x1=0, x2=0, recognizer=None, parser=None, **kwargs):
         self.name = name
         self.x1 = x1
         self.x2 = x2
         self.recognizer = recognizer
         self.parser = parser
-        self.dataset_name = dataset_name
+        self.kwargs = kwargs
         self.value = None
 
     def __repr__(self):
         cls_name = self.__class__.__name__
-        repr_str = "{}(name={}, x1={}, x2={}, recognizer={}, parser={}, dataset_name={})"
+        repr_str = "{}(name={}, x1={}, x2={}, recognizer={}, parser={}, {})"
         return repr_str.format(cls_name, self.name, self.x1, self.x2,
-                               self.recognizer.__name__, self.parser.__name__, self.dataset_name)
+                               self.recognizer.__name__, self.parser.__name__, **self.kwargs)
 
-    def recognize(self):
-        pass
+    def recognize(self, row_image):
+        if self.recognizer:
+            self.value = self.recognizer(row_image, **self.kwargs)
+        if self.parser:
+            self.value = self.parser(self.value)
+        return self.value
 
     @classmethod
     def from_dict(cls, field_dict):
-        name = field_dict['name']
-        x1 = field_dict['x1']
-        x2 = field_dict['x2']
-        recognizer = field_dict.get('recognizer')
-        parser = field_dict.get('parser')
-        dataset_name = field_dict.get('dataset_name')
-        return cls(name, x1=x1, x2=x2, recognizer=recognizer, parser=parser, dataset_name=dataset_name)
+        return cls(**field_dict)
 
     @classmethod
     def fields_from_dict(cls, fields_list):
