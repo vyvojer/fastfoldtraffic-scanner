@@ -3,11 +3,12 @@ import unittest
 import numpy as np
 from PIL import Image
 from scanner.ocr import _has_intersection, _unite_intersected, _get_united, _distinguish_flag, _find_flag
-from scanner.ocr import ImageRecord, find_row, recognize_characters, recognize_flag
+from scanner.ocr import ImageRecord, recognize_row, recognize_characters, recognize_flag
 
 from scanner.client import *
 
 from flags import rus_array
+
 
 class TestIntersection(unittest.TestCase):
     def setUp(self):
@@ -148,13 +149,13 @@ class TestParsers(unittest.TestCase):
                                  [0, 255, 255, 255, 255, 0]], dtype=np.uint8)
 
     def test_find_row(self):
-        zone = {'zone': (170, 171)}
-        self.assertTrue(np.array_equal(find_row(self.players_img_1, **zone), self.row_img_1))
-        self.assertTrue(np.array_equal(find_row(self.players_img_2, **zone), self.row_img_2))
-        self.assertTrue(np.array_equal(find_row(self.players_img_3, **zone), self.row_img_3))
-        self.assertTrue(np.array_equal(find_row(self.players_img_4, **zone), self.row_img_4))
+        zone = (170, 171)
+        self.assertTrue(np.array_equal(recognize_row(self.players_img_1, zone=zone), self.row_img_1))
+        self.assertTrue(np.array_equal(recognize_row(self.players_img_2, zone=zone), self.row_img_2))
+        self.assertTrue(np.array_equal(recognize_row(self.players_img_3, zone=zone), self.row_img_3))
+        self.assertTrue(np.array_equal(recognize_row(self.players_img_4, zone=zone), self.row_img_4))
         with self.assertRaises(ValueError) as raised:
-            find_row(self.players_list_empty, **zone)
+            recognize_row(self.players_list_empty, zone=zone)
         self.assertEqual(raised.exception.args[0], "Can't recognize row")
 
     def test_recognize_text_entry(self):
@@ -163,14 +164,12 @@ class TestParsers(unittest.TestCase):
             ImageRecord(self.img_of_3, '3'),
         ]
         })
-        kwargs = {'zone': (190, 220),
-                  'library': library}
-        text = recognize_characters(self.row_img_1, **kwargs)
+        zone = (190, 220)
+        text = recognize_characters(self.row_img_1, zone=zone, library=library)
         self.assertEqual(text, '2')
 
-        kwargs = {'zone': (190, 220),
-                  'library': library}
-        text = recognize_characters(self.row_img_2, **kwargs)
+        zone = (190, 220)
+        text = recognize_characters(self.row_img_2, zone=zone, library=library)
         self.assertEqual(text, '3')
 
     def test__find_flag(self):
@@ -194,8 +193,6 @@ class TestParsers(unittest.TestCase):
 
     def test_recognize_flag(self):
         library = ImageLibrary(records={(16, 22, 3): [ImageRecord(rus_array,'rus')]})
-        kwargs = {'zone': (140, 170),
-                  'library': library,
-                  }
-        country = recognize_flag(self.row_img_1, **kwargs)
+        zone = (140, 170)
+        country = recognize_flag(self.row_img_1,zone=zone, library=library)
         self.assertEqual(country, 'rus')

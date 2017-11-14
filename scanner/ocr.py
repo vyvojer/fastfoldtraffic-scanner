@@ -1,6 +1,7 @@
 import logging.config
 import pickle
 import time
+from collections import Counter
 from tkinter import Tk, Label, Button, Entry
 import os
 
@@ -60,6 +61,13 @@ class ImageLibrary:
             for symbol in one_size_symbols:
                 yield symbol
 
+    def __str__(self):
+        total = len([record for record in self])
+        unnamed = len([record for record in self if not record.text])
+        repeats = Counter(record.text for record in self).most_common(2)
+        return "ImageLibrary Total: {}; Unnamed: {}; Repeats: {}".format(total, unnamed, repeats)
+
+
     def get_symbol_record(self, symbol_image, max_difference=0):
         was_created = False
         appropiriate_size = self.records.setdefault(symbol_image.shape, list())
@@ -90,9 +98,8 @@ def crop_image(image, y1, y2, x1, x2):
     return image[y1:y2, x1:x2]
 
 
-def find_row(image, **kwargs):
+def recognize_row(image, zone):
     """ Find current row in PokerStars list """
-    zone = kwargs['zone']
     gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     cropped_image = gray_image[:, zone[0]:zone[1]]
     _, thresh_image = cv2.threshold(cropped_image, 200, 255, cv2.THRESH_BINARY_INV)
@@ -106,10 +113,8 @@ def find_row(image, **kwargs):
     return image[row_top:row_bottom, :]
 
 
-def recognize_characters(row_image, **kwargs):
+def recognize_characters(row_image, zone, library, **kwargs):
     log.info("Recognizing text...")
-    zone = kwargs['zone']
-    library = kwargs['library']
     cropped_image = crop_image(row_image, None, None, zone[0], zone[1])
     gray_image = cv2.cvtColor(cropped_image, cv2.COLOR_BGR2GRAY)
     _, thresh = cv2.threshold(gray_image, 160, 255, cv2.THRESH_BINARY)
@@ -125,15 +130,13 @@ def recognize_characters(row_image, **kwargs):
     for index, (x, y, w, h) in enumerate(united_rects):
         symbol_image = thresh[y:y + h, x:x + w]
         was_created, symbol = library.get_symbol_record(symbol_image)
-        text += symbol.text
+        text += str(symbol.text)
         if index > 0 and _check_space(united_rects[index - 1], (x, y, w, h)):
             text += ' '
     return text
 
 
-def recognize_flag(row_image, **kwargs):
-    zone = kwargs['zone']
-    library = kwargs['library']
+def recognize_flag(row_image, zone, library, **kwargs):
     cropped_image = crop_image(row_image, None, None, zone[0], zone[1])
     flag_image = _distinguish_flag(cropped_image)
     if flag_image.shape != (16, 22, 3) and flag_image.shape != (16, 18, 3):

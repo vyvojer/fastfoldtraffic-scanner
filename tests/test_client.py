@@ -39,20 +39,20 @@ img_of_3 = np.array([[0, 255, 255, 255, 255, 0],
 
 class ListRowTest(unittest.TestCase):
     def test_find_row(self):
-        list_row = ListRow(find_func=find_row, zone=(170, 171))
-        list_row.find(players_img_1)
+        list_row = ListRow(recognizer=recognize_row, zone=(170, 171))
+        list_row.recognize(players_img_1)
         self.assertTrue(np.array_equal(list_row.image, row_img_1))
 
-        list_row.find(players_img_2)
+        list_row.recognize(players_img_2)
         self.assertTrue(np.array_equal(list_row.image, row_img_2))
 
-        list_row.find(players_img_3)
+        list_row.recognize(players_img_3)
         self.assertTrue(np.array_equal(list_row.image, row_img_3))
 
-        list_row.find(players_img_4)
+        list_row.recognize(players_img_4)
         self.assertTrue(np.array_equal(list_row.image, row_img_4))
 
-        list_row.find(players_list_empty)
+        list_row.recognize(players_list_empty)
         self.assertEqual(list_row.image, None)
 
 
@@ -60,14 +60,16 @@ class ListItemTest(unittest.TestCase):
     def test_from_dict(self):
         field_dict = {
             'name': 'entries',
-            'x1': 190,
-            'x2': 220,
+            'zone': (190, 220),
+            'recognizer': 'recognize_characters',
+            'parser': 'int_parser',
         }
 
         field = ListItem.from_dict(field_dict)
         self.assertEqual(field.name, 'entries')
-        self.assertEqual(field.x1, 190)
-        self.assertEqual(field.x2, 220)
+        self.assertEqual(field.zone, (190, 220))
+        self.assertEqual(field.recognizer, recognize_characters)
+        self.assertEqual(field.parser, int_parser)
 
     def test_recognize_field(self):
         library = ImageLibrary(records={(10, 6): [

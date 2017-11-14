@@ -1,6 +1,6 @@
 import unittest
 
-from scan.osr import *
+from scanner.ocr import *
 
 from scanner.client import *
 
@@ -40,47 +40,6 @@ class WindowTest(unittest.TestCase):
         self.assertEqual(tw1, tw2)
 
 
-class ListFieldTest(unittest.TestCase):
-
-    def test_character(self):
-        field = ListItem('name', 0, 0, None, value='2.90')
-        self.assertEqual(field.parsed_value, '2.90')
-
-    def test_int(self):
-        field = ListItem('name', 0, 0, None, field_type=ListItem.INT, value='20')
-        self.assertEqual(field.parsed_value, 20)
-
-        field = ListItem('name', 0, 0, None, field_type=ListItem.INT, value='2.9s')
-        self.assertEqual(field.parsed_value, 29)
-
-        field = ListItem('name', 0, 0, None, field_type=ListItem.INT, value='s')
-        self.assertEqual(field.parsed_value, 0)
-
-    def test_float(self):
-        field = ListItem('name', 0, 0, None, field_type=ListItem.FLOAT, value='2.90')
-        self.assertEqual(field.parsed_value, 2.9)
-
-        field = ListItem('name', 0, 0, None, field_type=ListItem.FLOAT, value='2.9s')
-        self.assertEqual(field.parsed_value, 2.9)
-
-        field = ListItem('name', 0, 0, None, field_type=ListItem.FLOAT, value='s')
-        self.assertEqual(field.parsed_value, 0)
-
-    def test_from_dict(self):
-        field_dict = {
-            'name': 'entries',
-            'left_x': 190,
-            'right_x': 220,
-            'field_type': 'INT'
-        }
-        field = ListItem.from_dict(field_dict)
-        self.assertEqual(field.name, 'entries')
-        self.assertEqual(field.left_x, 190)
-        self.assertEqual(field.right_x, 220)
-        self.assertEqual(field.dataset_name, 'default')
-        self.assertEqual(field.field_type, ListItem.INT)
-
-
 class ListTest(unittest.TestCase):
 
     @classmethod
@@ -96,15 +55,15 @@ class ListTest(unittest.TestCase):
         player_list = ClientList(self.main_window, 'PokerStarsList2')
         first_value = player_list.reset()
         self.assertEqual(player_list.has_next, True)
-        self.assertEqual(first_value, player_list.value)
+        self.assertEqual(first_value, player_list.clipboard)
         second_value = player_list.get_next()
-        self.assertEqual(second_value, player_list.value)
+        self.assertEqual(second_value, player_list.clipboard)
         self.assertEqual(first_value, player_list.previous_value)
 
     def test_has_next(self):
         player_list = ClientList(self.main_window, 'PokerStarsList2')
         player_list.control.type_keys('^{END}')
-        player_list.get_value()
+        player_list.get_row()
         self.assertEqual(player_list.has_next, True)
         player_list.get_next()
         self.assertEqual(player_list.has_next, False)

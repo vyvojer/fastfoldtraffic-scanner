@@ -7,12 +7,14 @@ from pywinauto import clipboard
 from pywinauto.application import Application, ProcessNotFoundError, AppStartError
 import win32gui
 
-from scanner.ocr import pil_to_opencv, ImageLibrary, ImageLogger
+from scanner.ocr import pil_to_opencv, ImageLibrary, ImageLogger, recognize_characters, recognize_flag, recognize_row
 from scanner import settings
 
 logging.config.dictConfig(settings.logging_config)
 logging.setLoggerClass(ImageLogger)
 log = logging.getLogger(__name__)
+
+libraries = {}
 
 
 class Client:
@@ -23,7 +25,6 @@ class Client:
         self.main_window = None
         self.player_list = None
         self.table_list = None
-        self.dataset_dict = None
 
     def connect(self):
         try:
@@ -56,19 +57,18 @@ class Client:
         self.connect_or_start()
         self.main_window = ClientWindow(self, title_re="PokerStars Lobby")
         self.move_main_window()
-        self.dataset_dict = {}
-        for key, value in settings.pokerstars['dataset'].items():
-            self.dataset_dict[key] = ImageLibrary(value)
+        for key, value in settings.pokerstars['libraries'].items():
+            libraries[key] = ImageLibrary(file=value)
         self.player_list = ClientList(self.main_window,
                                       settings.pokerstars['player_list'],
-                                      cursor=settings.pokerstars['player_list_cursor_zone'],
-                                      fields=ListItem.fields_from_dict(settings.pokerstars['player_fields']),
-                                      dataset_dict=self.dataset_dict)
+                                      row=ListRow.from_dict(settings.pokerstars['player_list_row']),
+                                      items=ListItem.fields_from_dict(settings.pokerstars['player_fields']),
+                                      )
         self.table_list = ClientList(self.main_window,
                                      settings.pokerstars['table_list'],
-                                     cursor=settings.pokerstars['table_list_cursor_zone'],
-                                     fields=ListItem.fields_from_dict(settings.pokerstars['table_fields']),
-                                     dataset_dict=self.dataset_dict)
+                                     row=ListRow.from_dict(settings.pokerstars['table_list_row']),
+                                     items=ListItem.fields_from_dict(settings.pokerstars['table_fields']),
+                                     )
         self.close_not_main_windows()
 
     def connect_or_start(self):
@@ -92,9 +92,9 @@ class Client:
         return False
 
     def save_datasets(self):
-        if self.dataset_dict:
-            for dataset in self.dataset_dict.values():
-                dataset.save_library()
+        if libraries:
+            for library in libraries.values():
+                library.save_library()
 
     def close_not_main_windows(self):
         top_window = ClientWindow(self)
@@ -130,73 +130,83 @@ class ClientWindow:
 
 
 class ListRow:
-    def __init__(self, find_func, **kwargs):
+    def __init__(self, recognizer, zone):
         self.image = None
-        self.find_func = find_func
-        self.kwargs = kwargs
+        self.recognizer = recognizer
+        self.zone = zone
 
-    def find(self, list_image):
+    def recognize(self, list_image):
         try:
             log.debug("Recognizing row...")
-            self.image = self.find_func(list_image, **self.kwargs)
+            self.image = self.recognizer(list_image, self.zone)
         except ValueError:
             log.error("Can't recognize row.", extra={'images': [(list_image, 'wrong-row')]})
             self.image = None
         else:
             log.debug("Row was recognized.", extra={'images': [(list_image, 'row')]})
 
+    @classmethod
+    def from_dict(cls, field_dict: dict):
+        parsed_dict = {}
+        for key, value in field_dict.items():
+            if key == 'recognizer':
+                parsed_dict[key] = eval(value)
+            else:
+                parsed_dict[key] = value
+        return cls(**parsed_dict)
+
 
 class ClientList:
-    def __init__(self, window, control_name, cursor=None, fields=None, dataset_dict=None):
+    def __init__(self, window, control_name, row=None, items=None):
         self.control = window.control[control_name]
         self.has_next = True
-        self.value = None
+        self.clipboard = None
         self.previous_value = None
-        self.cursor = cursor
-        self.fields = fields
-        self.dataset_dict = dataset_dict
+        self.row = row
+        self.items = items
         self.image = None
-        self.row: ListRow = None
+        self.row: ListRow = row
 
     def __iter__(self):
         self.reset()
         while self.has_next:
-            value_dict = {}
-            value_dict['name'] = self.value
-            if self.fields is not None:
-                for field in self.fields:
-                    value_dict[field.name] = field.parsed_value
+            value_dict = dict()
+            value_dict['name'] = self.clipboard
+            if self.items is not None:
+                for item in self.items:
+                    value_dict[item.name] = item.value
             yield value_dict
             self.get_next()
 
     def reset(self):
         self.control.type_keys('^{HOME}')
         self.has_next = True
-        return self.get_value()
+        return self.get_row()
 
-    def get_value(self):
+    def get_row(self):
         self.control.type_keys('^c')
-        self.value = clipboard.GetData()
-        if self.fields is not None and self.cursor is not None:
+        self.clipboard = clipboard.GetData()
+        if self.items is not None and self.row is not None:
             self.get_items()
-        return self.value
+        return self.clipboard
 
     def get_items(self):
         self.capture_as_image()
-        self.row.find(self.image)
-        for field in self.fields:
-            pass
+        self.row.recognize(self.image)
+        for item in self.items:
+            item.recognize(self.row.image)
+            log.debug("Field {} = {}".format(item.name, item.value))
 
     def get_next(self):
-        self.previous_value = self.value
+        self.previous_value = self.clipboard
         self.control.type_keys('{DOWN}')
-        self.get_value()
-        if self.previous_value is not None and self.previous_value == self.value:
+        self.get_row()
+        if self.previous_value is not None and self.previous_value == self.clipboard:
             self.control.type_keys('{DOWN}')
-            self.get_value()
-            if self.previous_value is not None and self.previous_value == self.value:
+            self.get_row()
+            if self.previous_value is not None and self.previous_value == self.clipboard:
                 self.has_next = False
-        return self.value
+        return self.clipboard
 
     def capture_as_image(self):
         self.set_pil_image(self.control.capture_as_image())
@@ -206,31 +216,40 @@ class ClientList:
 
 
 class ListItem:
-    def __init__(self, name, x1=0, x2=0, recognizer=None, parser=None, **kwargs):
+    def __init__(self, name, zone=(0, 0), recognizer=None, parser=None, library=None, **kwargs):
         self.name = name
-        self.x1 = x1
-        self.x2 = x2
+        self.zone = zone
         self.recognizer = recognizer
         self.parser = parser
+        self.library = library
         self.kwargs = kwargs
         self.value = None
 
     def __repr__(self):
         cls_name = self.__class__.__name__
-        repr_str = "{}(name={}, x1={}, x2={}, recognizer={}, parser={}, {})"
-        return repr_str.format(cls_name, self.name, self.x1, self.x2,
+        repr_str = "{}(name={}, zone={}, recognizer={}, parser={}, {})"
+        return repr_str.format(cls_name, self.name, self.zone,
                                self.recognizer.__name__, self.parser.__name__, **self.kwargs)
 
     def recognize(self, row_image):
         if self.recognizer:
-            self.value = self.recognizer(row_image, **self.kwargs)
+            self.value = self.recognizer(row_image, self.zone, self.library, **self.kwargs)
         if self.parser:
             self.value = self.parser(self.value)
         return self.value
 
     @classmethod
-    def from_dict(cls, field_dict):
-        return cls(**field_dict)
+    def from_dict(cls, field_dict: dict):
+        parsed_dict = {}
+        for key, value in field_dict.items():
+            if key == 'recognizer' or key == 'parser':
+                log.debug('key={} value={}'.format(key, value))
+                parsed_dict[key] = eval(value)
+            elif key == 'library':
+                parsed_dict[key] = libraries[value]
+            else:
+                parsed_dict[key] = value
+        return cls(**parsed_dict)
 
     @classmethod
     def fields_from_dict(cls, fields_list):
