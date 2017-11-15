@@ -156,7 +156,7 @@ def recognize_flag(row_image, zone, library, **kwargs):
         elif image_record.text is None:
             log.warning("Flag record has None text",
                             extra={'images': [
-                                (flag_image, 'created-flag-distinguished'),
+                                (flag_image, 'none-flag-distinguished'),
                             ]})
         return image_record.text
 
