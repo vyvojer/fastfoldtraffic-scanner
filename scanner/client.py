@@ -136,14 +136,8 @@ class ListRow:
         self.zone = zone
 
     def recognize(self, list_image):
-        try:
-            log.debug("Recognizing row...")
-            self.image = self.recognizer(list_image, self.zone)
-        except ValueError:
-            log.error("Can't recognize row.", extra={'images': [(list_image, 'wrong-row')]})
-            self.image = None
-        else:
-            log.debug("Row was recognized.", extra={'images': [(list_image, 'row')]})
+        self.image = None
+        self.image = self.recognizer(list_image, self.zone)
 
     @classmethod
     def from_dict(cls, field_dict: dict):
@@ -192,10 +186,16 @@ class ClientList:
 
     def get_items(self):
         self.capture_as_image()
-        self.row.recognize(self.image)
-        for item in self.items:
-            item.recognize(self.row.image)
-            log.debug("Field {} = {}".format(item.name, item.value))
+        try:
+            log.debug("Recognizing row...")
+            self.row.recognize(self.image)
+        except ValueError:
+            log.error("Can't recognize row.", extra={'images': [(self.image, 'wrong-row')]})
+        else:
+            log.debug("Row was recognized.", extra={'images': [(self.image, 'row')]})
+            for item in self.items:
+                item.recognize(self.row.image)
+                log.debug("Field {} = {}".format(item.name, item.value))
 
     def get_next(self):
         self.previous_value = self.clipboard

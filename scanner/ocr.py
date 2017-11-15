@@ -64,7 +64,7 @@ class ImageLibrary:
     def __str__(self):
         total = len([record for record in self])
         unnamed = len([record for record in self if not record.text])
-        repeats = Counter(record.text for record in self).most_common(2)
+        repeats = Counter(record.text for record in self).most_common(6)
         return "ImageLibrary Total: {}; Unnamed: {}; Repeats: {}".format(total, unnamed, repeats)
 
 
@@ -175,15 +175,20 @@ def _distinguish_flag(flag_field_image):
 
 def _find_min_and_max_colors(pic):
     """ find upper and low colors of background """
+    """ find upper and low colors of background """
     h, w, _ = pic.shape
     corners = []
-    corners.append(pic[0:1, 0:1])
-    corners.append(pic[0:1, w - 1:w])
-    corners.append(pic[h - 2:h - 1, 0:1])
-    corners.append(pic[h - 2:h - 1, w - 1:w])
-    min_color = min(corners, key=lambda corner: corner.min())
-    max_color = max(corners, key=lambda corner: corner.max())
-    return min_color, max_color + 1
+    corners.append(pic[0:2, 0:4])
+    corners.append(pic[0:2, w - 1:w+1])
+    corners.append(pic[h - 3:h+1 - 1, 0:1])
+    corners.append(pic[h - 3:h+1 - 1, w - 4:w+1])
+    min_colors = [corner.min() for corner in corners]
+    max_colors = [corner.max() for corner in corners]
+    min_color = min(min_colors)
+    max_color = max(max_colors)
+    min_array = np.array([min_color, min_color, min_color])
+    max_array = np.array([max_color, max_color, max_color])
+    return min_array, max_array
 
 
 def _has_intersection(rect, next_rect):

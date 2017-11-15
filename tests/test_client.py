@@ -52,7 +52,8 @@ class ListRowTest(unittest.TestCase):
         list_row.recognize(players_img_4)
         self.assertTrue(np.array_equal(list_row.image, row_img_4))
 
-        list_row.recognize(players_list_empty)
+        with self.assertRaises(ValueError):
+            list_row.recognize(players_list_empty)
         self.assertEqual(list_row.image, None)
 
 
