@@ -298,7 +298,8 @@ def get_list_zones(pil_image: Image, ps_list=TABLE_LIST) -> dict:
 
 class TrainGUI:
     def __init__(self, master, dataset_file, only_empty=True):
-        self.dataset = ImageLibrary(file=dataset_file)
+        self.library = ImageLibrary(file=dataset_file)
+        print(str(self.library))
         self.master = master
         master.title("Train")
         self.only_empty = only_empty
@@ -318,9 +319,9 @@ class TrainGUI:
 
     def reset_iterator(self):
         if self.only_empty:
-            self.iterator = iter((s_record for s_record in self.dataset if not s_record.text))
+            self.iterator = iter((s_record for s_record in self.library if not s_record.text))
         else:
-            self.iterator = iter(self.dataset)
+            self.iterator = iter(self.library)
         self.symbol_record = next(self.iterator)
         if self.symbol_record:
             self._update_label()
@@ -350,7 +351,7 @@ class TrainGUI:
         self.entry.focus_set()
 
     def quit(self):
-        self.dataset.save_library()
+        self.library.save_library()
         self.master.quit()
 
 
