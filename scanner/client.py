@@ -182,10 +182,12 @@ class ClientList:
         self.control.type_keys('^c')
         self.clipboard = clipboard.GetData()
         if self.items is not None and self.row is not None:
-            for i in range(4): # 4 attempts to read row
+            for i in range(4):  # 4 attempts to read row
                 if not self.get_items():
                     time.sleep(4)
                 else:
+                    self.control.type_keys('^c')
+                    self.clipboard = clipboard.GetData()
                     break
 
         return self.clipboard
