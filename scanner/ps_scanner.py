@@ -56,7 +56,7 @@ class Scanner:
             file_name = 'dump-{}.json'.format(time.time())
             fine_name = 'dump.json'
             with open(os.path.join(settings.json_dir, file_name), 'w') as file:
-                json.dump(scan, file)
+                json.dump(scan, file, indent=4)
         else:
             print(json.dumps(scan, indent=4))
 

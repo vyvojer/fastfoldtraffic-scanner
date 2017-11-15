@@ -101,13 +101,13 @@ class SymbolsDatasetTest(unittest.TestCase):
 
     def test_recognize_symbol(self):
         dataset = ImageLibrary(records={(10, 6): [ImageRecord(self.img_of_2, '2')]})
-        _, symbol_record = dataset.get_symbol_record(self.img_of_2)
+        _, symbol_record = dataset.get_image_record(self.img_of_2)
         self.assertEqual(symbol_record.text, '2')
 
     def test__iter_(self):
         dataset = ImageLibrary()
-        dataset.get_symbol_record(self.img_of_2)
-        dataset.get_symbol_record(self.img_of_3)
+        dataset.get_image_record(self.img_of_2)
+        dataset.get_image_record(self.img_of_3)
         symbols = [symbol.image for symbol in dataset]
         self.assertEqual(len(symbols), 2)
         self.assertIn(self.img_of_2, symbols)

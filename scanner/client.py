@@ -2,6 +2,7 @@ import logging
 import logging.config
 import re
 
+import time
 from PIL import Image
 from pywinauto import clipboard
 from pywinauto.application import Application, ProcessNotFoundError, AppStartError
@@ -181,7 +182,10 @@ class ClientList:
         self.control.type_keys('^c')
         self.clipboard = clipboard.GetData()
         if self.items is not None and self.row is not None:
-            self.get_items()
+            if not self.get_items():
+                time.sleep(4)  #  Second try to read
+                self.get_items()
+
         return self.clipboard
 
     def get_items(self):
@@ -191,11 +195,13 @@ class ClientList:
             self.row.recognize(self.image)
         except ValueError:
             log.error("Can't recognize row.", extra={'images': [(self.image, 'wrong-row')]})
+            return None
         else:
             log.debug("Row was recognized.", extra={'images': [(self.image, 'row')]})
             for item in self.items:
                 item.recognize(self.row.image)
                 log.debug("Field {} = {}".format(item.name, item.value))
+            return self.items
 
     def get_next(self):
         self.previous_value = self.clipboard

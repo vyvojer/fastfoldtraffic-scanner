@@ -68,18 +68,19 @@ class ImageLibrary:
         repeats = Counter(record.text for record in self).most_common(6)
         return "ImageLibrary Total: {}; Unnamed: {}; Repeats: {}".format(total, unnamed, repeats)
 
-    def get_symbol_record(self, symbol_image, max_difference=0):
+    def get_image_record(self, image, min_matching=1.0):
         was_created = False
-        appropiriate_size = self.records.setdefault(symbol_image.shape, list())
-        for symbol_record in appropiriate_size:
-            if np.count_nonzero(symbol_record.image != symbol_image) <= max_difference:
-                symbol_record = symbol_record
+        appropiriate_size = self.records.setdefault(image.shape, list())
+        for record in appropiriate_size:
+            matching = cv2.matchTemplate(record.image, image, cv2.TM_CCOEFF_NORMED)[0][0]
+            if matching > 0.98:
+                record = record
                 break
         else:
             was_created = True
-            symbol_record = ImageRecord(symbol_image, None)
-            appropiriate_size.append(symbol_record)
-        return was_created, symbol_record
+            record = ImageRecord(image, None)
+            appropiriate_size.append(record)
+        return was_created, record
 
     def load_library(self):
         self.records = {}
@@ -129,7 +130,7 @@ def recognize_characters(row_image, zone, library, **kwargs):
     united_rects = _get_united(intersected_rects)
     for index, (x, y, w, h) in enumerate(united_rects):
         symbol_image = thresh[y:y + h, x:x + w]
-        was_created, symbol = library.get_symbol_record(symbol_image)
+        was_created, symbol = library.get_image_record(symbol_image)
         text += str(symbol.text)
         if index > 0 and _check_space(united_rects[index - 1], (x, y, w, h)):
             text += ' '
@@ -161,7 +162,7 @@ def recognize_flag(row_image, zone, library, **kwargs):
 
 
 def _find_flag(flag_image, library: ImageLibrary):
-    was_created, image_record = library.get_symbol_record(flag_image, max_difference=120)
+    was_created, image_record = library.get_image_record(flag_image, min_matching=0.98)
     return was_created, image_record
 
 
