@@ -1,8 +1,9 @@
 import logging
 import logging.config
 import re
-
 import time
+import warnings
+
 from PIL import Image
 from pywinauto import clipboard
 from pywinauto.application import Application, ProcessNotFoundError, AppStartError
@@ -29,7 +30,9 @@ class Client:
 
     def connect(self):
         try:
-            self.app = Application().connect(path=self.path)
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                self.app = Application().connect(path=self.path)
         except ProcessNotFoundError:
             return False
         return True
@@ -37,7 +40,9 @@ class Client:
     def start(self):
         try:
             logging.info("Starting PokerStars...")
-            Application().start(self.path)
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                Application().start(self.path)
             self.app = Application().connect(path=self.path)
             logging.info("Waiting for the Login window...")
             login_window = ClientWindow(self, title_re="Login.*")
