@@ -30,6 +30,7 @@ class ImageLogger(logging.Logger):
                     msg += " Image saved under name {}".format(img_name)
         super()._log(level, msg, args, exc_info, extra, stack_info)
 
+
 logging.config.dictConfig(settings.logging_config)
 logging.setLoggerClass(ImageLogger)
 log = logging.getLogger(__name__)
@@ -66,7 +67,6 @@ class ImageLibrary:
         unnamed = len([record for record in self if not record.text])
         repeats = Counter(record.text for record in self).most_common(6)
         return "ImageLibrary Total: {}; Unnamed: {}; Repeats: {}".format(total, unnamed, repeats)
-
 
     def get_symbol_record(self, symbol_image, max_difference=0):
         was_created = False
@@ -147,17 +147,18 @@ def recognize_flag(row_image, zone, library, **kwargs):
     else:
         was_created, image_record = _find_flag(flag_image, library)
         if was_created:
-            logging.warning("Was created new record in flag dataset",
-                            extra={'images':[
+            log.warning("Was created new record in flag dataset",
+                            extra={'images': [
                                 (cropped_image, 'created-flag-row'),
                                 (flag_image, 'created-flag-distinguished'),
                             ]})
         elif image_record.text is None:
-            logging.warning("Flag record has None text",
-                            extra={'images':[
+            log.warning("Flag record has None text",
+                            extra={'images': [
                                 (flag_image, 'created-flag-distinguished'),
                             ]})
         return image_record.text
+
 
 def _find_flag(flag_image, library: ImageLibrary):
     was_created, image_record = library.get_symbol_record(flag_image, max_difference=120)
@@ -179,9 +180,9 @@ def _find_min_and_max_colors(pic):
     h, w, _ = pic.shape
     corners = []
     corners.append(pic[0:2, 0:4])
-    corners.append(pic[0:2, w - 1:w+1])
-    corners.append(pic[h - 3:h+1 - 1, 0:1])
-    corners.append(pic[h - 3:h+1 - 1, w - 4:w+1])
+    corners.append(pic[0:2, w - 1:w + 1])
+    corners.append(pic[h - 3:h + 1 - 1, 0:1])
+    corners.append(pic[h - 3:h + 1 - 1, w - 4:w + 1])
     min_colors = [corner.min() for corner in corners]
     max_colors = [corner.max() for corner in corners]
     min_color = min(min_colors)
