@@ -179,6 +179,7 @@ class ClientList:
             self.get_next()
 
     def reset(self):
+        self.control.set_focus()
         self.control.type_keys('^{HOME}')
         self.has_next = True
         return self.get_row()
