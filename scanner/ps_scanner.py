@@ -35,16 +35,16 @@ class Scanner:
         tables = []
         scan = {}
         for table in self.client.table_list:
-            if table['players_count'] > 0:
+            if table['player_count'] > 0:
                 unique_players_count, entries_count, players = self.scan_players()
-                if not self._is_players_count_almost_equal(table['players_count'], entries_count):
+                if not self._is_players_count_almost_equal(table['player_count'], entries_count):
                     unique_players_count, entries_count, players = self.scan_players()
-                table['unique_players_count'] = unique_players_count
-                table['entries_count'] = entries_count
+                table['unique_player_count'] = unique_players_count
+                table['entry_count'] = entries_count
                 table['players'] = players
             else:
-                table['unique_players_count'] = 0
-                table['entries_count'] = 0
+                table['unique_player_count'] = 0
+                table['entry_count'] = 0
                 table['players'] = []
             tables.append(table)
         scan['room'] = settings.pokerstars['room']
