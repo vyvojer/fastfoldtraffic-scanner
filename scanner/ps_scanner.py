@@ -11,6 +11,7 @@ logging.config.dictConfig(settings.logging_config)
 logging.setLoggerClass(ImageLogger)
 log = logging.getLogger(__name__)
 
+
 class Scanner:
     def __init__(self):
         self.client = Client()
@@ -34,8 +35,14 @@ class Scanner:
         self.client.close_not_main_windows()
         tables = []
         scan = {}
+        log.info("Start scanning tables...")
         for table in self.client.table_list:
-            log.info("Scanning table {}".format(table['name']))
+            log.info("Scanning table {}. Plrs: {} Avg Pot: ${} Plrs/Flop: {} H/hr: {}".format(table['name'],
+                                                                                         table['player_count'],
+                                                                                         table['average_pot'],
+                                                                                         table['players_per_flop'],
+                                                                                         table['hands_per_hour'],
+                                                                                         ))
             if table['player_count'] > 0:
                 unique_players_count, entries_count, players = self.scan_players()
                 if not self._is_players_count_almost_equal(table['player_count'], entries_count):
@@ -47,7 +54,10 @@ class Scanner:
                 table['unique_player_count'] = 0
                 table['entry_count'] = 0
                 table['players'] = []
-            log.info("Table {} was scaned. Has {} unique players".format(table['name'], table['unique_player_count']))
+            log.info("Table {} was scaned. Plrs: {} Entrs: {}".format(table['name'],
+                                                                      table['unique_player_count'],
+                                                                      table['entry_count'],
+                                                                      ))
             tables.append(table)
         log.info("All tables was scanned")
         scan['room'] = settings.pokerstars['room']
@@ -88,4 +98,3 @@ class Scanner:
 if __name__ == '__main__':
     s = Scanner()
     s.main_loop()
-
