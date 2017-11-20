@@ -88,9 +88,9 @@ class Client:
         hwnd = self.main_window.control.handle
         default_width = settings.pokerstars['default_width']
         default_height = settings.pokerstars['default_height']
-        x = 100
-        y = 100
-        win32gui.MoveWindow(hwnd, x, y, default_width + x, default_height + y, True)
+        x =  settings.pokerstars['default_x']
+        y = settings.pokerstars['default_y']
+        win32gui.MoveWindow(hwnd, x, y, default_width, default_height, True)
 
     def is_running(self):
         if self.app is not None and self.app.is_process_running():

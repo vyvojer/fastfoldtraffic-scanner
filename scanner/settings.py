@@ -39,8 +39,10 @@ logging_config = {
 
 pokerstars = {
     'path': r'C:\Program Files (x86)\PokerStars\PokerStars.exe',
-    'default_width': 1070,
-    'default_height': 701,
+    'default_x': 70,
+    'default_y': 0,
+    'default_width': 1170,
+    'default_height': 801,
     'main_window': 'PokerStars Lobby',
     'table_list': 'PokerStarsList0',
     'player_list': 'PokerStarsList2',
