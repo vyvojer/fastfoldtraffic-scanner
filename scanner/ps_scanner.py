@@ -4,12 +4,12 @@ import os.path
 import sys
 import time
 
-#import scanner.settings
+from scanner import settings
 from scanner.client import *
 
-#logging.config.dictConfig(scanner.settings.logging_config)
+logging.config.dictConfig(settings.logging_config)
+logging.setLoggerClass(ImageLogger)
 log = logging.getLogger(__name__)
-
 
 class Scanner:
     def __init__(self):
@@ -35,6 +35,7 @@ class Scanner:
         tables = []
         scan = {}
         for table in self.client.table_list:
+            log.info("Scanning table {}".format(table['name']))
             if table['player_count'] > 0:
                 unique_players_count, entries_count, players = self.scan_players()
                 if not self._is_players_count_almost_equal(table['player_count'], entries_count):
@@ -46,7 +47,9 @@ class Scanner:
                 table['unique_player_count'] = 0
                 table['entry_count'] = 0
                 table['players'] = []
+            log.info("Table {} was scaned. Has {} unique players".format(table['name'], table['unique_player_count']))
             tables.append(table)
+        log.info("All tables was scanned")
         scan['room'] = settings.pokerstars['room']
         scan['tables'] = tables
         self._handle_scan(scan)

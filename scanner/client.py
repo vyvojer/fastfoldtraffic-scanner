@@ -283,6 +283,7 @@ def int_parser(initial_value):
         return int(int_str)
     except ValueError:
         log.error("Cant convert '%s' to int", initial_value)
+        return 0
 
 
 def float_parser(initial_value):
@@ -293,3 +294,4 @@ def float_parser(initial_value):
         return float(float_str)
     except ValueError:
         log.error("Cant convert '%s' to float", initial_value)
+        return 0

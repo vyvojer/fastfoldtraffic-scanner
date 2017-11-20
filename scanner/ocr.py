@@ -85,7 +85,7 @@ class ImageLibrary:
     def load_library(self):
         self.records = {}
         try:
-            log.info("Opening dataset file ")
+            log.debug("Opening dataset file ")
             with open(self.file, 'rb') as file:
                 self.records = pickle.load(file)
         except FileNotFoundError:
@@ -115,7 +115,7 @@ def recognize_row(image, zone):
 
 
 def recognize_characters(row_image, zone, library, **kwargs):
-    log.info("Recognizing text...")
+    log.debug("Recognizing text...")
     cropped_image = crop_image(row_image, None, None, zone[0], zone[1])
     gray_image = cv2.cvtColor(cropped_image, cv2.COLOR_BGR2GRAY)
     _, thresh = cv2.threshold(gray_image, 160, 255, cv2.THRESH_BINARY)
