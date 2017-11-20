@@ -2,6 +2,7 @@ import logging.config
 import pickle
 import time
 from collections import Counter
+import argparse
 from tkinter import Tk, Label, Button, Entry
 import os
 
@@ -355,11 +356,15 @@ class TrainGUI:
         self.master.quit()
 
 
-def train_symbols():
+def train_symbols(library_file):
     root = Tk()
-    my_gui = TrainGUI(root, 'pokerstars_flags.dat')
+    my_gui = TrainGUI(root, library_file)
     root.mainloop()
 
 
 if __name__ == "__main__":
-    train_symbols()
+    parser = argparse.ArgumentParser(description="Image library trainer")
+    parser.add_argument('-l', help='library file', type=str, default='pokerstars_flags.dat')
+    args = parser.parse_args()
+    print(args.l)
+    train_symbols(library_file=args.l)

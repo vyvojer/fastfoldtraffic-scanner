@@ -2,6 +2,7 @@ import json
 import logging.config
 import os.path
 import sys
+import argparse
 import time
 
 from scanner import settings
@@ -13,10 +14,17 @@ log = logging.getLogger(__name__)
 
 
 class Scanner:
-    def __init__(self):
+    def __init__(self, only_once=False, save_characters=False, save_flags=False, only_tables=False):
         self.client = Client()
         self.client.prepare()
         self.to_file = True
+        self.only_once=only_once
+        self.library_for_saving = []
+        if save_characters:
+            self.library_for_saving.append('pokerstars_characters')
+        if save_flags:
+            self.library_for_saving.append('pokerstars_flags')
+        self.only_tables=only_tables
 
     def scan_players(self):
         self.client.move_main_window()
@@ -42,7 +50,7 @@ class Scanner:
                                                                                          table['average_pot'],
                                                                                          table['players_per_flop'],
                                                                                          ))
-            if table['player_count'] > 0:
+            if not self.only_tables and table['player_count'] > 0:
                 unique_players_count, entries_count, players = self.scan_players()
                 if not self._is_players_count_almost_equal(table['player_count'], entries_count):
                     unique_players_count, entries_count, players = self.scan_players()
@@ -80,7 +88,7 @@ class Scanner:
                     self.scan_tables()
                 except Exception:
                     log.error("Exception during scan", exc_info=True)
-                self.client.save_datasets()
+                self.client.save_datasets(include=self.library_for_saving)
                 time.sleep(30)
         except KeyboardInterrupt:
             print("You pressed Ctrl+C")
@@ -95,5 +103,18 @@ class Scanner:
 
 
 if __name__ == '__main__':
-    s = Scanner()
+    parser = argparse.ArgumentParser(description='Pokerstars scanner')
+    parser.add_argument('--once', '-o', action='store_true', help='scan only once', default=False)
+    parser.add_argument('-sc', action='store_true', help='save character library', default=False)
+    parser.add_argument('-sf', action='store_true', help='save flag library', default=False)
+    parser.add_argument('--tables', '-t', action='store_true', help='scan only tables', default=False)
+    parser.add_argument('--verbose', action='store_true', help='verbose info', default=False)
+    parser.add_argument('--debug', action='store_true', help='debug info', default=False)
+    args = parser.parse_args()
+    print(args.tables)
+    if args.verbose:
+        log.setLevel(logging.INFO)
+    if args.debug:
+        log.setLevel(logging.DEBUG)
+    s = Scanner(only_once=args.once, save_characters=args.sc, save_flags=args.sf, only_tables=args.tables)
     s.main_loop()

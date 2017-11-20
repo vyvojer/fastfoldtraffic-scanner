@@ -97,10 +97,11 @@ class Client:
             return True
         return False
 
-    def save_datasets(self):
+    def save_datasets(self, include: list):
         if libraries:
-            for library in libraries.values():
-                library.save_library()
+            for key in libraries.keys():
+                if key in include:
+                    libraries[key].save_library()
 
     def close_not_main_windows(self):
         top_window = ClientWindow(self)
@@ -290,6 +291,7 @@ def float_parser(initial_value):
     if initial_value == '':
         return 0
     float_str = ''.join(re.findall(r'\d|\.', initial_value))
+    log.debug("Float initial_value={}, float_str={}".format(initial_value, float_str))
     try:
         return float(float_str)
     except ValueError:
