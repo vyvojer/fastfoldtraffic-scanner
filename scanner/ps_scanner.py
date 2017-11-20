@@ -37,13 +37,12 @@ class Scanner:
         scan = {}
         log.info("Start scanning tables...")
         for table in self.client.table_list:
-            log.info("Scanning table {}. Plrs: {} Avg Pot: ${} Plrs/Flop: {} H/hr: {}".format(table['name'],
+            log.info("Scanning table {}. Plrs: {} Avg Pot: ${} Plrs/Flop: {}".format(table['name'],
                                                                                          table['player_count'],
                                                                                          table['average_pot'],
                                                                                          table['players_per_flop'],
-                                                                                         table['hands_per_hour'],
                                                                                          ))
-            if table['player_count'] > 0:
+            if False and table['player_count'] > 0:
                 unique_players_count, entries_count, players = self.scan_players()
                 if not self._is_players_count_almost_equal(table['player_count'], entries_count):
                     unique_players_count, entries_count, players = self.scan_players()
