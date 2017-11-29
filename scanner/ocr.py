@@ -48,14 +48,14 @@ class ImageRecord:
 
 
 class ImageLibrary:
-    def __init__(self, file=None, records=None):
-        if file is None:
+    def __init__(self, library_path=None, records=None):
+        if library_path is None:
             if records is None:
                 self.records = {}
             else:
                 self.records = records
         else:
-            self.file = file
+            self.library_path = library_path
             self.load_library()
 
     def __iter__(self):
@@ -87,13 +87,13 @@ class ImageLibrary:
         self.records = {}
         try:
             log.debug("Opening dataset file ")
-            with open(self.file, 'rb') as file:
+            with open(self.library_path, 'rb') as file:
                 self.records = pickle.load(file)
         except FileNotFoundError:
             log.warning("Can't open dataset file.", exc_info=True)
 
     def save_library(self):
-        pickle.dump(self.records, open(self.file, 'wb'))
+        pickle.dump(self.records, open(self.library_path, 'wb'))
 
 
 def crop_image(image, y1, y2, x1, x2):
@@ -131,8 +131,19 @@ def recognize_characters(row_image, zone, library, **kwargs):
     united_rects = _get_united(intersected_rects)
     for index, (x, y, w, h) in enumerate(united_rects):
         symbol_image = thresh[y:y + h, x:x + w]
-        was_created, symbol = library.get_image_record(symbol_image)
-        text += str(symbol.text)
+        was_created, symbol_record = library.get_image_record(symbol_image)
+        if was_created:
+            log.warning("Was created new record in flag dataset",
+                            extra={'images': [
+                                (cropped_image, 'created-symbol-row'),
+                                (symbol_image, 'created-symbol-distinguished'),
+                            ]})
+        elif symbol_record.text is None:
+            log.warning("Flag record has None text",
+                            extra={'images': [
+                                (symbol_image, 'none-symbol-distinguished'),
+                            ]})
+        text += str(symbol_record.text)
         if index > 0 and _check_space(united_rects[index - 1], (x, y, w, h)):
             text += ' '
     return text
@@ -298,8 +309,8 @@ def get_list_zones(pil_image: Image, ps_list=TABLE_LIST) -> dict:
 
 
 class TrainGUI:
-    def __init__(self, master, dataset_file, only_empty=True):
-        self.library = ImageLibrary(file=dataset_file)
+    def __init__(self, master, library_path, only_empty=True):
+        self.library = ImageLibrary(library_path=library_path)
         print(str(self.library))
         self.master = master
         master.title("Train")
@@ -356,15 +367,16 @@ class TrainGUI:
         self.master.quit()
 
 
-def train_symbols(library_file):
+def train_symbols(library_path, only_empty=True):
     root = Tk()
-    my_gui = TrainGUI(root, library_file)
+    my_gui = TrainGUI(root, library_path, only_empty=only_empty)
     root.mainloop()
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Image library trainer")
     parser.add_argument('-l', help='library file', type=str, default='pokerstars_flags.dat')
+    parser.add_argument('-ld', help='library dir', type=str, default=settings.package_dir)
+    parser.add_argument('-all', help='all images (not only empty)', action='store_true', default=False)
     args = parser.parse_args()
-    print(args.l)
-    train_symbols(library_file=args.l)
+    train_symbols(library_path=os.path.join(args.ld, args.l), only_empty= not args.all)

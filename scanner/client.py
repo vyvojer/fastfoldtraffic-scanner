@@ -4,6 +4,7 @@ import re
 import time
 import warnings
 
+import os
 from PIL import Image
 from pywinauto import clipboard
 from pywinauto.application import Application, ProcessNotFoundError, AppStartError
@@ -21,12 +22,13 @@ libraries = {}
 
 class Client:
     def __init__(self, path=settings.pokerstars['path'],
-                 main_window=None):
+                 main_window=None, library_dir=None):
         self.path = path
         self.app = None
         self.main_window = None
         self.player_list = None
         self.table_list = None
+        self.library_dir = library_dir
 
     def connect(self):
         try:
@@ -64,7 +66,8 @@ class Client:
         self.main_window = ClientWindow(self, title_re="PokerStars Lobby")
         self.move_main_window()
         for key, value in settings.pokerstars['libraries'].items():
-            libraries[key] = ImageLibrary(file=value)
+            library_path = os.path.join(self.library_dir, value)
+            libraries[key] = ImageLibrary(library_path=library_path)
         self.player_list = ClientList(self.main_window,
                                       settings.pokerstars['player_list'],
                                       row=ListRow.from_dict(settings.pokerstars['player_list_row']),
@@ -211,7 +214,6 @@ class ClientList:
             log.debug("Row was recognized.", extra={'images': [(self.image, 'row')]})
             for item in self.items:
                 item.recognize(self.row.image)
-                log.debug("Field {} = {}".format(item.name, item.value))
             return self.items
 
     def get_next(self):

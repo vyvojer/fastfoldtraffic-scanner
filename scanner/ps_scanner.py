@@ -5,26 +5,33 @@ import sys
 import argparse
 import time
 
-from scanner import settings
-from scanner.client import *
+from scanner import settings, ocr, client
 
 logging.config.dictConfig(settings.logging_config)
-logging.setLoggerClass(ImageLogger)
-log = logging.getLogger(__name__)
+logging.setLoggerClass(ocr.ImageLogger)
+log = logging.getLogger("scanner.ps_scanner")
 
 
 class Scanner:
-    def __init__(self, only_once=False, save_characters=False, save_flags=False, only_tables=False):
-        self.client = Client()
+    def __init__(self, library_dir=None,
+                 only_once=False,
+                 save_characters=False,
+                 save_flags=False,
+                 only_tables=False):
+        if library_dir is None:
+            self.library_dir = settings.package_dir
+        else:
+            self.library_dir = library_dir
+        self.client = client.Client(library_dir=self.library_dir)
         self.client.prepare()
         self.to_file = True
-        self.only_once=only_once
+        self.only_once = only_once
         self.library_for_saving = []
         if save_characters:
             self.library_for_saving.append('pokerstars_characters')
         if save_flags:
             self.library_for_saving.append('pokerstars_flags')
-        self.only_tables=only_tables
+        self.only_tables = only_tables
 
     def scan_players(self):
         self.client.move_main_window()
@@ -43,13 +50,13 @@ class Scanner:
         self.client.close_not_main_windows()
         tables = []
         scan = {}
-        log.info("Start scanning tables...")
+        log.debug("Start scanning tables...")
         for table in self.client.table_list:
-            log.info("Scanning table {}. Plrs: {} Avg Pot: ${} Plrs/Flop: {}".format(table['name'],
-                                                                                         table['player_count'],
-                                                                                         table['average_pot'],
-                                                                                         table['players_per_flop'],
-                                                                                         ))
+            log.debug("Scanning table {}. Plrs: {} Avg Pot: ${} Plrs/Flop: {}".format(table['name'],
+                                                                                     table['player_count'],
+                                                                                     table['average_pot'],
+                                                                                     table['players_per_flop'],
+                                                                                     ))
             if not self.only_tables and table['player_count'] > 0:
                 unique_players_count, entries_count, players = self.scan_players()
                 if not self._is_players_count_almost_equal(table['player_count'], entries_count):
@@ -61,7 +68,7 @@ class Scanner:
                 table['unique_player_count'] = 0
                 table['entry_count'] = 0
                 table['players'] = []
-            log.info("Table {} was scaned. Plrs: {} Entrs: {}".format(table['name'],
+            log.debug("Table {} was scaned. Plrs: {} Entrs: {}".format(table['name'],
                                                                       table['unique_player_count'],
                                                                       table['entry_count'],
                                                                       ))
@@ -81,14 +88,18 @@ class Scanner:
             print(json.dumps(scan, indent=4))
 
     def main_loop(self):
+        repeat = True
         try:
-            while True:
+            while repeat:
                 try:
                     self.client.prepare()
                     self.scan_tables()
                 except Exception:
                     log.error("Exception during scan", exc_info=True)
                 self.client.save_datasets(include=self.library_for_saving)
+                if self.only_once:
+                    repeat = False
+                    break
                 time.sleep(30)
         except KeyboardInterrupt:
             print("You pressed Ctrl+C")
@@ -104,6 +115,7 @@ class Scanner:
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Pokerstars scanner')
+    parser.add_argument('--library_dir', help='library dir', default=None)
     parser.add_argument('--once', '-o', action='store_true', help='scan only once', default=False)
     parser.add_argument('-sc', action='store_true', help='save character library', default=False)
     parser.add_argument('-sf', action='store_true', help='save flag library', default=False)
@@ -111,10 +123,16 @@ if __name__ == '__main__':
     parser.add_argument('--verbose', action='store_true', help='verbose info', default=False)
     parser.add_argument('--debug', action='store_true', help='debug info', default=False)
     args = parser.parse_args()
-    print(args.tables)
     if args.verbose:
-        log.setLevel(logging.INFO)
+        for l in [log, ocr.log, client.log]:
+            l.setLevel(logging.INFO)
     if args.debug:
-        log.setLevel(logging.DEBUG)
-    s = Scanner(only_once=args.once, save_characters=args.sc, save_flags=args.sf, only_tables=args.tables)
+        for l in [log, ocr.log, client.log]:
+            l.setLevel(logging.DEBUG)
+
+    s = Scanner(library_dir=args.library_dir,
+                only_once=args.once,
+                save_characters=args.sc,
+                save_flags=args.sf,
+                only_tables=args.tables)
     s.main_loop()

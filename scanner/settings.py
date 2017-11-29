@@ -1,12 +1,15 @@
 import logging
+import logging.config
 import os
 import os.path
+import configparser
+import sys
 
-log_path = 'scan.log'
+log_file = 'scan.log'
+ini_file = 'scanner.ini'
 log_picture_path = 'log_pictures'
-
-if not os.path.exists(log_picture_path):
-    os.makedirs(log_picture_path)
+json_dir = None
+package_dir = None
 
 logging_config = {
     'version': 1,
@@ -24,13 +27,13 @@ logging_config = {
             'class': 'logging.FileHandler',
             'mode': 'a',
             'formatter': 'default',
-            'filename': log_path,
+            'filename': log_file,
 
         }
     },
     'loggers': {
         '': {
-            'level': logging.INFO,
+            'level': logging.WARNING,
             'handlers': ['console', 'file']
         }
     },
@@ -89,4 +92,41 @@ pokerstars = {
     'room': 'PS'
 }
 
-json_dir = 'd:\\temp\\json'
+logging.config.dictConfig(logging_config)
+log = logging.getLogger(__name__)
+
+
+def setup():
+    read_config()
+    global package_dir
+    package_dir = os.path.dirname(os.path.realpath(__file__))
+    if not os.path.exists(log_picture_path):
+        os.makedirs(log_picture_path)
+
+
+def read_config():
+    if not os.path.exists(ini_file):
+        config = configparser.ConfigParser()
+        config['Scanner'] = {
+            'name': 'scanner_1',
+        }
+        config['API'] = {
+            'host': 'localhost',
+            'url': '/api/v1/update-tables/',
+        }
+        config['papertrailapp.com'] = {
+            'host': 'logsN.papertrailapp.com',
+            'key': 'XXXX',
+        }
+        log.warning("Config file doesn't exist. New config file will created.")
+        with open('scanner.ini', 'w') as config_file:
+            config.write(config_file)
+        sys.exit(0)
+    else:
+        config = configparser.ConfigParser()
+        config.read(ini_file)
+        global json_dir
+        json_dir = config['Scanner'].get('json_dir', './json')
+
+
+setup()
