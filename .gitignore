@@ -4,3 +4,4 @@
 *.log
 tests/*.dat
 log_pictures
+scanner.ini
