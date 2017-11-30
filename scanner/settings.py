@@ -11,6 +11,8 @@ log_picture_path = 'log_pictures'
 scanner_name = 'unnamed'
 json_dir = None
 package_dir = None
+papertrail_host = None
+papertrail_port = None
 
 log = logging.getLogger(__name__)
 
@@ -27,15 +29,16 @@ def read_config():
     if not os.path.exists(ini_file):
         config = configparser.ConfigParser()
         config['Scanner'] = {
-            'name': 'scanner_1',
+            'name': 'SCANNER_1',
+            'json_dir': '.\\json'
         }
         config['API'] = {
             'host': 'localhost',
             'url': '/api/v1/update-tables/',
         }
         config['papertrailapp.com'] = {
-            'host': 'logsN.papertrailapp.com',
-            'key': 'XXXX',
+            'host': 'logs6.papertrailapp.com',
+            'port': 12590,
         }
         print("Config file doesn't exist. New config file will created.")
         with open('scanner.ini', 'w') as config_file:
@@ -46,8 +49,12 @@ def read_config():
         config.read(ini_file)
         global scanner_name
         global json_dir
+        global papertrail_host
+        global papertrail_port
         scanner_name = config['Scanner'].get('name', 'LOCAL')
         json_dir = config['Scanner'].get('json_dir', './json')
+        papertrail_host = config['papertrailapp.com'].get('host', 'logs6.papertrailapp.com')
+        papertrail_port = int(config['papertrailapp.com'].get('port', '12590'))
 
 
 setup()
@@ -55,7 +62,7 @@ setup()
 logging_config = {
     'version': 1,
     'formatters': {
-        'default': {'format': '%(asctime)s - {} - %(name)s - %(levelname)s - %(message)s', 'datefmt'.format(scanner_name): '%Y-%m-%d %H:%M:%S'}
+        'default': {'format': '%(asctime)s - {} - %(name)s - %(levelname)s - %(message)s'.format(scanner_name), 'datefmt': '%Y-%m-%d %H:%M:%S'}
     },
     'handlers': {
         'console': {
@@ -75,7 +82,7 @@ logging_config = {
             'level': logging.DEBUG,
             'class': 'logging.handlers.SysLogHandler',
             'formatter': 'default',
-            'address': ('logs6.papertrailapp.com', 12590)
+            'address': (papertrail_host, papertrail_port)
         },
 
     },
