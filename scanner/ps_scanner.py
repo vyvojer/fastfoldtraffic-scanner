@@ -82,7 +82,7 @@ class Scanner:
         log.info("Scanner '{}' has scanned {} tables".format(settings.scanner_name, len(tables)))
         scan_result['scanner_name'] = settings.scanner_name
         scan_result['room'] = settings.pokerstars['room']
-        scan_time =  datetime.datetime.now()
+        scan_time = datetime.datetime.now()
         scan_result['datetime'] = scan_time.isoformat()
         scan_result['tables'] = tables
         self._handle_scan(scan_result, scan_time)
