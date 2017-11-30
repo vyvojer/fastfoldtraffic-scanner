@@ -8,6 +8,7 @@ import sys
 log_file = 'scan.log'
 ini_file = 'scanner.ini'
 log_picture_path = 'log_pictures'
+scanner_name = None
 json_dir = None
 package_dir = None
 
@@ -125,7 +126,9 @@ def read_config():
     else:
         config = configparser.ConfigParser()
         config.read(ini_file)
+        global scanner_name
         global json_dir
+        scanner_name = config['Scanner'].get('name', 'Ivan')
         json_dir = config['Scanner'].get('json_dir', './json')
 
 
