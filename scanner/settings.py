@@ -96,7 +96,7 @@ logging_config = {
     'loggers': {
         '': {
             'level': logging.WARNING,
-            'handlers': ['console', 'file', 'syslog']
+            'handlers': ['console', 'file', ]
         }
     },
     'disable_existing_loggers': False

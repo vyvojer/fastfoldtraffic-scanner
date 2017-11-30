@@ -23,7 +23,7 @@ class Scanner:
                  save_characters=False,
                  save_flags=False,
                  only_tables=False):
-        self.save_only = save_only,
+        self.save_only = save_only
         if library_dir is None:
             self.library_dir = settings.package_dir
         else:
@@ -90,26 +90,35 @@ class Scanner:
     def _handle_scan(self, scan_result: dict, scan_time: datetime.datetime):
         scan_time = datetime.datetime.now()
         if self.save_only:
-            try:
-                self._save_scan_result(scan_result, scan_time)
-            except FileNotFoundError:
-                log.error("Can't save json file", exc_info=True)
+            self._save_scan_result(scan_result, scan_time)
         else:
-            try:
-                self._send_scan_result_to_api(scan_result)
-            except Exception:
-                pass
+            self._send_scan_result_to_api(scan_result, scan_time)
 
-    def _save_scan_result(self, scan_result: dict,  scan_time: datetime.datetime):
-        if self.to_file:
-            file_name = 'scan_{}.json'.format(scan_time.strftime("%Y-%m-%d_%H-%M-%S"))
+    @staticmethod
+    def _save_scan_result(scan_result: dict,  scan_time: datetime.datetime):
+        file_name = 'scan_{}.json'.format(scan_time.strftime("%Y-%m-%d_%H-%M-%S"))
+        try:
             with open(os.path.join(settings.json_dir, file_name), 'w') as file:
                 json.dump(scan_result, file, indent=4)
+        except FileNotFoundError:
+            log.error("Can't save json file", exc_info=True)
         else:
-            print(json.dumps(scan_result, indent=4))
+            log.info("Scan result was saved")
 
-    def _send_scan_result_to_api(self, scan_result: dict):
-        pass
+    @staticmethod
+    def _send_scan_result_to_api(scan_result: dict,  scan_time: datetime.datetime, save_if_error=True):
+        url = settings.api_host + settings.api_url
+        try:
+            response = requests.put(url=url, data=json.dumps(scan_result), headers={'content-type': 'application/json'})
+            if not response.ok:
+                log.error("Response status code is 400. Errors: {}...".format(response.text[:100]))
+                response.raise_for_status()
+        except requests.RequestException as e:
+            log.error("Can't send request. The json file will saved", exc_info=True)
+            if save_if_error:
+                Scanner._save_scan_result(scan_result, scan_time)
+        else:
+            log.info("Scan result was successfully sent")
 
     def main_loop(self):
         repeat = True
@@ -138,7 +147,7 @@ class Scanner:
 
 
 def add_args(parser: ArgumentParser):
-    parser.add_argument('--save-only', dest='save_only', action='store_false',
+    parser.add_argument('--save-only', dest='save_only', action='store_false', default=False,
                         help="Don't send a json file, only save", )
     parser.add_argument('--library_dir', dest='library_dir', default=None, help='Library directory')
     parser.add_argument('--only-once', '-o', dest='only_once', action='store_true', default=False,
