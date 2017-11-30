@@ -8,14 +8,54 @@ import sys
 log_file = 'scan.log'
 ini_file = 'scanner.ini'
 log_picture_path = 'log_pictures'
-scanner_name = None
+scanner_name = 'unnamed'
 json_dir = None
 package_dir = None
+
+log = logging.getLogger(__name__)
+
+
+def setup():
+    read_config()
+    global package_dir
+    package_dir = os.path.dirname(os.path.realpath(__file__))
+    if not os.path.exists(log_picture_path):
+        os.makedirs(log_picture_path)
+
+
+def read_config():
+    if not os.path.exists(ini_file):
+        config = configparser.ConfigParser()
+        config['Scanner'] = {
+            'name': 'scanner_1',
+        }
+        config['API'] = {
+            'host': 'localhost',
+            'url': '/api/v1/update-tables/',
+        }
+        config['papertrailapp.com'] = {
+            'host': 'logsN.papertrailapp.com',
+            'key': 'XXXX',
+        }
+        log.warning("Config file doesn't exist. New config file will created.")
+        with open('scanner.ini', 'w') as config_file:
+            config.write(config_file)
+        sys.exit(0)
+    else:
+        config = configparser.ConfigParser()
+        config.read(ini_file)
+        global scanner_name
+        global json_dir
+        scanner_name = config['Scanner'].get('name', 'LOCAL')
+        json_dir = config['Scanner'].get('json_dir', './json')
+
+
+setup()
 
 logging_config = {
     'version': 1,
     'formatters': {
-        'default': {'format': '%(asctime)s - %(name)s - %(levelname)s - %(message)s', 'datefmt': '%Y-%m-%d %H:%M:%S'}
+        'default': {'format': '%(asctime)s - {} - %(name)s - %(levelname)s - %(message)s', 'datefmt'.format(scanner_name): '%Y-%m-%d %H:%M:%S'}
     },
     'handlers': {
         'console': {
@@ -30,12 +70,19 @@ logging_config = {
             'formatter': 'default',
             'filename': log_file,
 
-        }
+        },
+        'syslog': {
+            'level': logging.DEBUG,
+            'class': 'logging.handlers.SysLogHandler',
+            'formatter': 'default',
+            'address': ('logs6.papertrailapp.com', 12590)
+        },
+
     },
     'loggers': {
         '': {
             'level': logging.WARNING,
-            'handlers': ['console', 'file']
+            'handlers': ['console', 'file', 'syslog']
         }
     },
     'disable_existing_loggers': False
@@ -93,43 +140,4 @@ pokerstars = {
     'room': 'PS'
 }
 
-logging.config.dictConfig(logging_config)
-log = logging.getLogger(__name__)
 
-
-def setup():
-    read_config()
-    global package_dir
-    package_dir = os.path.dirname(os.path.realpath(__file__))
-    if not os.path.exists(log_picture_path):
-        os.makedirs(log_picture_path)
-
-
-def read_config():
-    if not os.path.exists(ini_file):
-        config = configparser.ConfigParser()
-        config['Scanner'] = {
-            'name': 'scanner_1',
-        }
-        config['API'] = {
-            'host': 'localhost',
-            'url': '/api/v1/update-tables/',
-        }
-        config['papertrailapp.com'] = {
-            'host': 'logsN.papertrailapp.com',
-            'key': 'XXXX',
-        }
-        log.warning("Config file doesn't exist. New config file will created.")
-        with open('scanner.ini', 'w') as config_file:
-            config.write(config_file)
-        sys.exit(0)
-    else:
-        config = configparser.ConfigParser()
-        config.read(ini_file)
-        global scanner_name
-        global json_dir
-        scanner_name = config['Scanner'].get('name', 'Ivan')
-        json_dir = config['Scanner'].get('json_dir', './json')
-
-
-setup()
