@@ -37,7 +37,7 @@ def read_config():
             'host': 'logsN.papertrailapp.com',
             'key': 'XXXX',
         }
-        log.warning("Config file doesn't exist. New config file will created.")
+        print("Config file doesn't exist. New config file will created.")
         with open('scanner.ini', 'w') as config_file:
             config.write(config_file)
         sys.exit(0)
@@ -87,7 +87,6 @@ logging_config = {
     },
     'disable_existing_loggers': False
 }
-
 pokerstars = {
     'path': r'C:\Program Files (x86)\PokerStars\PokerStars.exe',
     'default_x': 70,
