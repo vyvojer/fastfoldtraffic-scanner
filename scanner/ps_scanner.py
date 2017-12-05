@@ -109,7 +109,10 @@ class Scanner:
     def _send_scan_result_to_api(scan_result: dict,  scan_time: datetime.datetime, save_if_error=True):
         url = settings.api_host + settings.api_url
         try:
-            response = requests.put(url=url, data=json.dumps(scan_result), headers={'content-type': 'application/json'})
+            response = requests.put(url=url,
+                                    verify=settings.verify_ssl,
+                                    data=json.dumps(scan_result),
+                                    headers={'content-type': 'application/json'})
             if not response.ok:
                 log.error("Response status code is 400. Errors: {}...".format(response.text[:100]))
                 response.raise_for_status()
@@ -147,7 +150,7 @@ class Scanner:
 
 
 def add_args(parser: ArgumentParser):
-    parser.add_argument('--save-only', dest='save_only', action='store_false', default=False,
+    parser.add_argument('--save-only', dest='save_only', action='store_true', default=False,
                         help="Don't send a json file, only save", )
     parser.add_argument('--library_dir', dest='library_dir', default=None, help='Library directory')
     parser.add_argument('--only-once', '-o', dest='only_once', action='store_true', default=False,
