@@ -16,6 +16,8 @@ papertrail_port = None
 api_host = None
 api_url = None
 verify_ssl = True
+api_user = None
+api_password = None
 
 log = logging.getLogger(__name__)
 
@@ -38,7 +40,9 @@ def read_config():
         config['API'] = {
             'host': 'https://localhost',
             'url': '/api/v1/scans/',
-            'verify_ssl': True
+            'verify_ssl': True,
+            'user': 'scanner',
+            'password': 'scanner',
         }
         config['papertrailapp.com'] = {
             'host': 'logs6.papertrailapp.com',
@@ -57,6 +61,8 @@ def read_config():
         global papertrail_port
         global api_host
         global api_url
+        global api_user
+        global api_password
         global verify_ssl
         scanner_name = config['Scanner'].get('name', 'LOCAL')
         json_dir = config['Scanner'].get('json_dir', './json')
@@ -64,6 +70,8 @@ def read_config():
         papertrail_port = int(config['papertrailapp.com'].get('port', '12590'))
         api_host = config['API'].get('host', 'localhost')
         api_url = config['API'].get('url', '/api/v1/scans/')
+        api_user = config['API'].get('user', 'scanner')
+        api_password = config['API'].get('password', 'scanner')
         verify_ssl = eval(config['API'].get('verify_ssl', 'True'))
         pass
 

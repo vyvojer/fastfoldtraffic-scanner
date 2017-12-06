@@ -66,6 +66,8 @@ class Scanner:
             if not self.only_tables and table['player_count'] > 0:
                 unique_players_count, entries_count, players = self.scan_players()
                 if not self._is_players_count_almost_equal(table['player_count'], entries_count):
+                    log.warning("Big differerence between player count ({}) and entries count ({})".format(
+                        table['player_count'], entries_count))
                     unique_players_count, entries_count, players = self.scan_players()
                 table['unique_player_count'] = unique_players_count
                 table['entry_count'] = entries_count
@@ -95,7 +97,7 @@ class Scanner:
             self._send_scan_result_to_api(scan_result, scan_time)
 
     @staticmethod
-    def _save_scan_result(scan_result: dict,  scan_time: datetime.datetime):
+    def _save_scan_result(scan_result: dict, scan_time: datetime.datetime):
         file_name = 'scan_{}.json'.format(scan_time.strftime("%Y-%m-%d_%H-%M-%S"))
         try:
             with open(os.path.join(settings.json_dir, file_name), 'w') as file:
@@ -106,13 +108,14 @@ class Scanner:
             log.info("Scan result was saved")
 
     @staticmethod
-    def _send_scan_result_to_api(scan_result: dict,  scan_time: datetime.datetime, save_if_error=True):
+    def _send_scan_result_to_api(scan_result: dict, scan_time: datetime.datetime, save_if_error=True):
         url = settings.api_host + settings.api_url
         try:
             response = requests.put(url=url,
                                     verify=settings.verify_ssl,
                                     data=json.dumps(scan_result),
-                                    headers={'content-type': 'application/json'})
+                                    headers={'content-type': 'application/json'},
+                                    auth=(settings.api_user, settings.api_password))
             if not response.ok:
                 log.error("Response status code is 400. Errors: {}...".format(response.text[:100]))
                 response.raise_for_status()
@@ -143,7 +146,7 @@ class Scanner:
 
     @staticmethod
     def _is_players_count_almost_equal(players, entries):
-        if abs(players - entries) < 10:
+        if abs(players - entries) < 15:
             return True
         else:
             return False
