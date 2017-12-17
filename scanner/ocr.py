@@ -2,6 +2,7 @@ import logging.config
 import pickle
 import time
 from collections import Counter
+from enum import IntEnum
 import argparse
 from tkinter import Tk, Label, Button, Entry
 import os
@@ -133,13 +134,13 @@ def recognize_characters(row_image, zone, library, **kwargs):
         symbol_image = thresh[y:y + h, x:x + w]
         was_created, symbol_record = library.get_image_record(symbol_image)
         if was_created:
-            log.warning("Was created new record in flag dataset",
+            log.warning("Was created new record in character library",
                             extra={'images': [
                                 (cropped_image, 'created-symbol-row'),
                                 (symbol_image, 'created-symbol-distinguished'),
                             ]})
         elif symbol_record.text is None:
-            log.warning("Flag record has None text",
+            log.warning("Character record has None text",
                             extra={'images': [
                                 (symbol_image, 'none-symbol-distinguished'),
                             ]})
@@ -160,7 +161,7 @@ def recognize_flag(row_image, zone, library, **kwargs):
     else:
         was_created, image_record = _find_flag(flag_image, library)
         if was_created:
-            log.warning("Was created new record in flag dataset",
+            log.warning("Was created new record in flag library",
                             extra={'images': [
                                 (cropped_image, 'created-flag-row'),
                                 (flag_image, 'created-flag-distinguished'),
