@@ -13,7 +13,7 @@ import win32gui
 from scanner.ocr import pil_to_opencv, ImageLibrary, ImageLogger, recognize_characters, recognize_flag, recognize_row
 from scanner import settings
 
-logging.config.dictConfig(settings.logging_config)
+logging.config.dictConfig(settings.LOGGING_CONFIG)
 logging.setLoggerClass(ImageLogger)
 log = logging.getLogger(__name__)
 
@@ -21,7 +21,7 @@ libraries = {}
 
 
 class Client:
-    def __init__(self, path=settings.pokerstars['path'],
+    def __init__(self, path=settings.POKERSTARS['path'],
                  main_window=None, library_dir=None):
         self.path = path
         self.app = None
@@ -65,18 +65,18 @@ class Client:
         self.connect_or_start()
         self.main_window = ClientWindow(self, title_re="PokerStars Lobby")
         self.move_main_window()
-        for key, value in settings.pokerstars['libraries'].items():
+        for key, value in settings.POKERSTARS['libraries'].items():
             library_path = os.path.join(self.library_dir, value)
             libraries[key] = ImageLibrary(library_path=library_path)
         self.player_list = ClientList(self.main_window,
-                                      settings.pokerstars['player_list'],
-                                      row=ListRow.from_dict(settings.pokerstars['player_list_row']),
-                                      items=ListItem.fields_from_dict(settings.pokerstars['player_fields']),
+                                      settings.POKERSTARS['player_list'],
+                                      row=ListRow.from_dict(settings.POKERSTARS['player_list_row']),
+                                      items=ListItem.fields_from_dict(settings.POKERSTARS['player_fields']),
                                       )
         self.table_list = ClientList(self.main_window,
-                                     settings.pokerstars['table_list'],
-                                     row=ListRow.from_dict(settings.pokerstars['table_list_row']),
-                                     items=ListItem.fields_from_dict(settings.pokerstars['table_fields']),
+                                     settings.POKERSTARS['table_list'],
+                                     row=ListRow.from_dict(settings.POKERSTARS['table_list_row']),
+                                     items=ListItem.fields_from_dict(settings.POKERSTARS['table_fields']),
                                      )
         self.close_not_main_windows()
 
@@ -89,10 +89,10 @@ class Client:
     def move_main_window(self):
         self.main_window.control.restore()
         hwnd = self.main_window.control.handle
-        default_width = settings.pokerstars['default_width']
-        default_height = settings.pokerstars['default_height']
-        x =  settings.pokerstars['default_x']
-        y = settings.pokerstars['default_y']
+        default_width = settings.POKERSTARS['default_width']
+        default_height = settings.POKERSTARS['default_height']
+        x =  settings.POKERSTARS['default_x']
+        y = settings.POKERSTARS['default_y']
         win32gui.MoveWindow(hwnd, x, y, default_width, default_height, True)
 
     def is_running(self):

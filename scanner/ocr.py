@@ -27,12 +27,12 @@ class ImageLogger(logging.Logger):
                 tick = time.time()
                 for img, prefix in images:
                     img_name = "{}-{}.png".format(prefix, tick)
-                    cv2.imwrite(os.path.join(settings.log_picture_path, img_name), img)
+                    cv2.imwrite(os.path.join(settings.LOG_PICTURE_PATH, img_name), img)
                     msg += " Image saved under name {}".format(img_name)
         super()._log(level, msg, args, exc_info, extra, stack_info)
 
 
-logging.config.dictConfig(settings.logging_config)
+logging.config.dictConfig(settings.LOGGING_CONFIG)
 logging.setLoggerClass(ImageLogger)
 log = logging.getLogger(__name__)
 logging.getLogger('PIL').setLevel(logging.WARNING)

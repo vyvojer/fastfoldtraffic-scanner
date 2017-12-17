@@ -10,7 +10,7 @@ import requests
 
 from scanner import settings, ocr, client
 
-logging.config.dictConfig(settings.logging_config)
+logging.config.dictConfig(settings.LOGGING_CONFIG)
 logging.setLoggerClass(ocr.ImageLogger)
 log = logging.getLogger("scanner.ps_scanner")
 
@@ -25,7 +25,7 @@ class Scanner:
                  only_tables=False):
         self.save_only = save_only
         if library_dir is None:
-            self.library_dir = settings.package_dir
+            self.library_dir = settings.PACKAGE_DIR
         else:
             self.library_dir = library_dir
         self.client = client.Client(library_dir=self.library_dir)
@@ -68,7 +68,7 @@ class Scanner:
                 if not self._is_players_count_almost_equal(table['player_count'], entries_count):
                     log.warning("Big differerence between player count ({}) and entries count ({})".format(
                         table['player_count'], entries_count))
-                    unique_players_count, entries_count, players = self.scan_players()
+                    break
                 table['unique_player_count'] = unique_players_count
                 table['entry_count'] = entries_count
                 table['players'] = players
@@ -81,9 +81,9 @@ class Scanner:
                                                                        table['entry_count'],
                                                                        ))
             tables.append(table)
-        log.info("Scanner '{}' has scanned {} tables".format(settings.scanner_name, len(tables)))
-        scan_result['scanner_name'] = settings.scanner_name
-        scan_result['room'] = settings.pokerstars['room']
+        log.info("Scanner '{}' has scanned {} tables".format(settings.SCANNER_NAME, len(tables)))
+        scan_result['scanner_name'] = settings.SCANNER_NAME
+        scan_result['room'] = settings.POKERSTARS['room']
         scan_time = datetime.datetime.now()
         scan_result['datetime'] = scan_time.isoformat()
         scan_result['tables'] = tables
@@ -94,13 +94,13 @@ class Scanner:
         if self.save_only:
             self._save_scan_result(scan_result, scan_time)
         else:
-            self._send_scan_result_to_api(scan_result, scan_time)
+            self.send_scan_result_to_api(scan_result, scan_time)
 
     @staticmethod
     def _save_scan_result(scan_result: dict, scan_time: datetime.datetime):
         file_name = 'scan_{}.json'.format(scan_time.strftime("%Y-%m-%d_%H-%M-%S"))
         try:
-            with open(os.path.join(settings.json_dir, file_name), 'w') as file:
+            with open(os.path.join(settings.JSON_DIR, file_name), 'w') as file:
                 json.dump(scan_result, file, indent=4)
         except FileNotFoundError:
             log.error("Can't save json file", exc_info=True)
@@ -108,14 +108,14 @@ class Scanner:
             log.info("Scan result was saved")
 
     @staticmethod
-    def _send_scan_result_to_api(scan_result: dict, scan_time: datetime.datetime, save_if_error=True):
-        url = settings.api_host + settings.api_url
+    def send_scan_result_to_api(scan_result: dict, scan_time: datetime.datetime=None, save_if_error=True):
+        url = settings.API_HOST + settings.API_URL
         try:
             response = requests.put(url=url,
-                                    verify=settings.verify_ssl,
+                                    verify=settings.API_VERIFY_SSL,
                                     data=json.dumps(scan_result),
                                     headers={'content-type': 'application/json'},
-                                    auth=(settings.api_user, settings.api_password))
+                                    auth=(settings.API_USER, settings.API_PASSWORD))
             if not response.ok:
                 log.error("Response status code is 400. Errors: {}...".format(response.text[:100]))
                 response.raise_for_status()
@@ -152,7 +152,15 @@ class Scanner:
             return False
 
 
+def send_saved():
+    for file in sorted(os.listdir(settings.JSON_DIR), reverse=True):
+        scan_result = json.load(open(os.path.join(settings.JSON_DIR, file)))
+        Scanner.send_scan_result_to_api(scan_result, save_if_error=False)
+
+
 def add_args(parser: ArgumentParser):
+    parser.add_argument('--send-saved', dest='send_saved', action='store_true', default=False,
+                        help="Don't scan. Only send all saved", )
     parser.add_argument('--save-only', dest='save_only', action='store_true', default=False,
                         help="Don't send a json file, only save", )
     parser.add_argument('--library_dir', dest='library_dir', default=None, help='Library directory')
@@ -178,10 +186,13 @@ if __name__ == '__main__':
         for l in [log, ocr.log, client.log]:
             l.setLevel(logging.DEBUG)
 
-    s = Scanner(save_only=args.save_only,
-                library_dir=args.library_dir,
-                only_once=args.only_once,
-                save_characters=args.save_characters,
-                save_flags=args.save_flags,
-                only_tables=args.only_tables)
-    s.main_loop()
+    if args.send_saved:
+        send_saved()
+    else:
+        s = Scanner(save_only=args.save_only,
+                    library_dir=args.library_dir,
+                    only_once=args.only_once,
+                    save_characters=args.save_characters,
+                    save_flags=args.save_flags,
+                    only_tables=args.only_tables)
+        s.main_loop()

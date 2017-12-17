@@ -1,87 +1,38 @@
 import logging
-import logging.config
-import os
 import os.path
-import configparser
-import sys
 
-log_file = 'scan.log'
-ini_file = 'scanner.ini'
-log_picture_path = 'log_pictures'
-scanner_name = 'unnamed'
-json_dir = None
-package_dir = None
-papertrail_host = None
-papertrail_port = None
-api_host = None
-api_url = None
-verify_ssl = True
-api_user = None
-api_password = None
+from decouple import AutoConfig
 
-log = logging.getLogger(__name__)
+LOG_FILE = 'scan.log'
+LOG_PICTURE_PATH = 'log_pictures'
 
+if not os.path.exists(LOG_PICTURE_PATH):
+    os.makedirs(LOG_PICTURE_PATH)
 
-def setup():
-    read_config()
-    global package_dir
-    package_dir = os.path.dirname(os.path.realpath(__file__))
-    if not os.path.exists(log_picture_path):
-        os.makedirs(log_picture_path)
+BASE_DIR = os.getcwd()
+PACKAGE_DIR = os.path.dirname(os.path.realpath(__file__))
 
+config = AutoConfig(search_path=BASE_DIR)
 
-def read_config():
-    if not os.path.exists(ini_file):
-        config = configparser.ConfigParser()
-        config['Scanner'] = {
-            'name': 'SCANNER_1',
-            'json_dir': '.\\json'
-        }
-        config['API'] = {
-            'host': 'https://localhost',
-            'url': '/api/v1/scans/',
-            'verify_ssl': True,
-            'user': 'scanner',
-            'password': 'scanner',
-        }
-        config['papertrailapp.com'] = {
-            'host': 'logs6.papertrailapp.com',
-            'port': 12590,
-        }
-        print("Config file doesn't exist. New config file will created.")
-        with open('scanner.ini', 'w') as config_file:
-            config.write(config_file)
-        sys.exit(0)
-    else:
-        config = configparser.ConfigParser()
-        config.read(ini_file)
-        global scanner_name
-        global json_dir
-        global papertrail_host
-        global papertrail_port
-        global api_host
-        global api_url
-        global api_user
-        global api_password
-        global verify_ssl
-        scanner_name = config['Scanner'].get('name', 'LOCAL')
-        json_dir = config['Scanner'].get('json_dir', './json')
-        papertrail_host = config['papertrailapp.com'].get('host', 'logs6.papertrailapp.com')
-        papertrail_port = int(config['papertrailapp.com'].get('port', '12590'))
-        api_host = config['API'].get('host', 'localhost')
-        api_url = config['API'].get('url', '/api/v1/scans/')
-        api_user = config['API'].get('user', 'scanner')
-        api_password = config['API'].get('password', 'scanner')
-        verify_ssl = eval(config['API'].get('verify_ssl', 'True'))
-        pass
+SCANNER_NAME = config('SCANNER_NAME', default='LOCAL')
+
+print(SCANNER_NAME)
+JSON_DIR = config('JSON_DIR', default='.\\json')
+
+API_HOST = config('API_HOST', default='https://fastfoldtraffic.com')
+API_URL = config('API_URL', default='/api/v1/scans/')
+API_VERIFY_SSL = config('API_VERIFY_SSL', cast=bool, default=False)
+API_USER = config('API_USER', default='scanner')
+API_PASSWORD = config('API_PASSWORD', default='scanner')
+
+PAPERTRAIL_HOST = config('PAPERTRAIL_HOST', default='logs6.papertrailapp.com')
+PAPERTRAIL_PORT = config('PAPERTRAIL_PORT', cast=int, default=12590)
 
 
-setup()
-
-logging_config = {
+LOGGING_CONFIG = {
     'version': 1,
     'formatters': {
-        'default': {'format': '%(asctime)s - {} - %(name)s - %(levelname)s - %(message)s'.format(scanner_name),
+        'default': {'format': '%(asctime)s - {} - %(name)s - %(levelname)s - %(message)s'.format(SCANNER_NAME),
                     'datefmt': '%Y-%m-%d %H:%M:%S'}
     },
     'handlers': {
@@ -95,14 +46,14 @@ logging_config = {
             'class': 'logging.FileHandler',
             'mode': 'a',
             'formatter': 'default',
-            'filename': log_file,
+            'filename': LOG_FILE,
 
         },
         'syslog': {
             'level': logging.DEBUG,
             'class': 'logging.handlers.SysLogHandler',
             'formatter': 'default',
-            'address': (papertrail_host, papertrail_port)
+            'address': (PAPERTRAIL_HOST, PAPERTRAIL_PORT)
         },
 
     },
@@ -114,7 +65,8 @@ logging_config = {
     },
     'disable_existing_loggers': False
 }
-pokerstars = {
+
+POKERSTARS = {
     'path': r'C:\Program Files (x86)\PokerStars\PokerStars.exe',
     'default_x': 70,
     'default_y': 0,
