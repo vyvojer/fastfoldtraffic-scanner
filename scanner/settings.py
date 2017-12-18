@@ -16,7 +16,6 @@ config = AutoConfig(search_path=BASE_DIR)
 
 SCANNER_NAME = config('SCANNER_NAME', default='LOCAL')
 
-print(SCANNER_NAME)
 JSON_DIR = config('JSON_DIR', default='.\\json')
 
 API_HOST = config('API_HOST', default='https://fastfoldtraffic.com')
