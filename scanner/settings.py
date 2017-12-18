@@ -28,6 +28,8 @@ API_PASSWORD = config('API_PASSWORD', default='scanner')
 PAPERTRAIL_HOST = config('PAPERTRAIL_HOST', default='logs6.papertrailapp.com')
 PAPERTRAIL_PORT = config('PAPERTRAIL_PORT', cast=int, default=12590)
 
+POKERSTARS_PATH = config('POKERSTARS_PATH', default='C:\Program Files (x86)\PokerStars\PokerStars.exe')
+
 
 LOGGING_CONFIG = {
     'version': 1,
@@ -60,14 +62,14 @@ LOGGING_CONFIG = {
     'loggers': {
         '': {
             'level': logging.WARNING,
-            'handlers': ['console', 'file', ]
+            'handlers': ['console', 'file', 'syslog']
         }
     },
     'disable_existing_loggers': False
 }
 
 POKERSTARS = {
-    'path': r'C:\Program Files (x86)\PokerStars\PokerStars.exe',
+    'path': POKERSTARS_PATH,
     'default_x': 70,
     'default_y': 0,
     'default_width': 1170,

@@ -15,5 +15,5 @@ setup(name='fftraffic-scanner',
       package_data={
           'scanner': ['pokerstars_characters.dat', 'pokerstars_flags.dat']
       },
-      requires=['requests', 'pywinauto', 'win32gui', 'Pillow'],
+      install_requires=['requests', 'pywinauto', 'win32gui', 'Pillow', 'opencv-python', 'python-decouple'],
       zip_safe=False)
