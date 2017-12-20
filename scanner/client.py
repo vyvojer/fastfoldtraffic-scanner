@@ -11,7 +11,7 @@ from pywinauto.application import Application, ProcessNotFoundError, AppStartErr
 import win32gui
 
 from scanner.ocr import pil_to_opencv, ImageLibrary, ImageLogger, recognize_characters, recognize_flag, recognize_row
-from scanner.ocr import RecordDoesNotExist
+from scanner.ocr import RecordDoesNotExist, FlagTextIsNone
 from scanner import settings
 
 logging.config.dictConfig(settings.LOGGING_CONFIG)
@@ -260,6 +260,12 @@ class ListItem:
                             extra={'images': [
                                 (exc.cropped_image, 'created-flag-row'),
                                 (exc.distinguished_image, 'created-flag-distinguished'),
+                            ]})
+                self.value = None
+            except FlagTextIsNone as exc:
+                log.warning("Flag record text is none",
+                            extra={'images': [
+                                (exc.distinguished_image, 'flag-text-is-none'),
                             ]})
                 self.value = None
         if self.parser:

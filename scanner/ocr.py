@@ -141,11 +141,18 @@ class FlagDoesNotExist(RecordDoesNotExist):
 
 class RecordTextIsNone(OcrException):
     """ Record exist but text is None """
-    def __init__(self, library, cropped_image, distinguished_image):
+    def __init__(self, library, cropped_image, distinguished_image, msg=None):
         super(RecordTextIsNone, self).__init__(msg='Record exist but text is None')
         self.library = library
         self.cropped_image = cropped_image
         self.distinguished_image = distinguished_image
+
+
+class FlagTextIsNone(RecordTextIsNone):
+    """ Record exist but text is None """
+    def __init__(self, library, cropped_image, distinguished_image):
+        super(FlagTextIsNone, self).__init__(library, cropped_image, distinguished_image,
+                                             msg='Record exist but text is None')
 
 
 def recognize_characters(row_image, zone, library, **kwargs):
@@ -194,12 +201,8 @@ def recognize_flag(row_image, zone, library, **kwargs):
         was_created, image_record = _find_flag(flag_image, library)
         if was_created:
             raise FlagDoesNotExist(library, cropped_image, flag_image)
-
         elif image_record.text is None:
-            log.warning("Flag record has None text",
-                            extra={'images': [
-                                (flag_image, 'none-flag-distinguished'),
-                            ]})
+            raise FlagTextIsNone(library, cropped_image, flag_image)
         return image_record.text
 
 
