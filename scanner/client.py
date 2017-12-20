@@ -11,6 +11,7 @@ from pywinauto.application import Application, ProcessNotFoundError, AppStartErr
 import win32gui
 
 from scanner.ocr import pil_to_opencv, ImageLibrary, ImageLogger, recognize_characters, recognize_flag, recognize_row
+from scanner.ocr import RecordDoesNotExist
 from scanner import settings
 
 logging.config.dictConfig(settings.LOGGING_CONFIG)
@@ -252,7 +253,15 @@ class ListItem:
 
     def recognize(self, row_image):
         if self.recognizer:
-            self.value = self.recognizer(row_image, self.zone, self.library, **self.kwargs)
+            try:
+                self.value = self.recognizer(row_image, self.zone, self.library, **self.kwargs)
+            except RecordDoesNotExist as exc:
+                log.warning("Was created new record in flag library",
+                            extra={'images': [
+                                (exc.cropped_image, 'created-flag-row'),
+                                (exc.distinguished_image, 'created-flag-distinguished'),
+                            ]})
+                self.value = None
         if self.parser:
             self.value = self.parser(self.value)
         return self.value

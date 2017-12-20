@@ -39,7 +39,7 @@ class Scanner:
             self.library_for_saving.append('pokerstars_flags')
         self.only_tables = only_tables
 
-    def scan_players(self):
+    def scan_players(self, table):
         self.client.move_main_window()
         self.client.close_not_main_windows()
         players = []
@@ -49,6 +49,8 @@ class Scanner:
             unique_players_count += 1
             entries_count += int(player['entries'])
             players.append(player)
+            if player['country'] is None:
+                log.warning("Player '%s' from table '%s' has unknown country", player['name'], table)
         return unique_players_count, entries_count, players
 
     def scan_tables(self):
@@ -64,7 +66,7 @@ class Scanner:
                                                                                       table['players_per_flop'],
                                                                                       ))
             if not self.only_tables and table['player_count'] > 0:
-                unique_players_count, entries_count, players = self.scan_players()
+                unique_players_count, entries_count, players = self.scan_players(table['name'])
                 if not self._is_players_count_almost_equal(table['player_count'], entries_count):
                     log.warning("Big differerence between player count ({}) and entries count ({})".format(
                         table['player_count'], entries_count))
@@ -163,7 +165,7 @@ def add_args(parser: ArgumentParser):
                         help="Don't scan. Only send all saved", )
     parser.add_argument('--save-only', dest='save_only', action='store_true', default=False,
                         help="Don't send a json file, only save", )
-    parser.add_argument('--library_dir', dest='library_dir', default=None, help='Library directory')
+    parser.add_argument('--library-dir', dest='library_dir', default=None, help='Library directory')
     parser.add_argument('--only-once', '-o', dest='only_once', action='store_true', default=False,
                         help='scan only once')
     parser.add_argument('--save-characters', dest='save_characters', action='store_true', default=False,

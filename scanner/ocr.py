@@ -116,6 +116,38 @@ def recognize_row(image, zone):
     return image[row_top:row_bottom, :]
 
 
+class OcrException(Exception):
+
+    def __init__(self, msg) -> None:
+        if msg is None:
+            msg = "An Ocr Error occurred"
+        super().__init__(msg)
+
+
+class RecordDoesNotExist(OcrException):
+    """ Record does not exist in library """
+    def __init__(self, library, cropped_image, distinguished_image, msg=None):
+        super(RecordDoesNotExist, self).__init__(msg='Record does not exist')
+        self.library = library
+        self.cropped_image = cropped_image
+        self.distinguished_image = distinguished_image
+
+
+class FlagDoesNotExist(RecordDoesNotExist):
+    """ Record does not exist in library """
+    def __init__(self, library, cropped_image, distinguished_image):
+        super(FlagDoesNotExist, self).__init__(library, cropped_image, distinguished_image, msg='Flag does not exist')
+
+
+class RecordTextIsNone(OcrException):
+    """ Record exist but text is None """
+    def __init__(self, library, cropped_image, distinguished_image):
+        super(RecordTextIsNone, self).__init__(msg='Record exist but text is None')
+        self.library = library
+        self.cropped_image = cropped_image
+        self.distinguished_image = distinguished_image
+
+
 def recognize_characters(row_image, zone, library, **kwargs):
     log.debug("Recognizing text...")
     cropped_image = crop_image(row_image, None, None, zone[0], zone[1])
@@ -161,11 +193,8 @@ def recognize_flag(row_image, zone, library, **kwargs):
     else:
         was_created, image_record = _find_flag(flag_image, library)
         if was_created:
-            log.warning("Was created new record in flag library",
-                            extra={'images': [
-                                (cropped_image, 'created-flag-row'),
-                                (flag_image, 'created-flag-distinguished'),
-                            ]})
+            raise FlagDoesNotExist(library, cropped_image, flag_image)
+
         elif image_record.text is None:
             log.warning("Flag record has None text",
                             extra={'images': [
