@@ -47,6 +47,9 @@ class ImageRecord:
     def __repr__(self):
         return "SymbolRecord({}, {})".format(self.image, self.text)
 
+    def __eq__(self, other):
+        return np.array_equal(self.image, other.image) and self.text == other.text
+
 
 class ImageLibrary:
     def __init__(self, library_path=None, records=None):
@@ -70,10 +73,16 @@ class ImageLibrary:
         repeats = Counter(record.text for record in self).most_common(6)
         return "ImageLibrary Total: {}; Unnamed: {}; Repeats: {}".format(total, unnamed, repeats)
 
+    def delete(self, record: ImageRecord):
+        image_size = record.image.shape
+        list_for_size = self.records.get(image_size)
+        if list_for_size:
+            list_for_size.remove(record)
+
     def get_image_record(self, image, min_matching=1.0):
         was_created = False
-        appropiriate_size = self.records.setdefault(image.shape, list())
-        for record in appropiriate_size:
+        image_size = self.records.setdefault(image.shape, list())
+        for record in image_size:
             matching = cv2.matchTemplate(record.image, image, cv2.TM_CCOEFF_NORMED)[0][0]
             if matching > 0.98:
                 record = record
@@ -81,7 +90,7 @@ class ImageLibrary:
         else:
             was_created = True
             record = ImageRecord(image, None)
-            appropiriate_size.append(record)
+            image_size.append(record)
         return was_created, record
 
     def load_library(self):
@@ -94,7 +103,8 @@ class ImageLibrary:
             log.warning("Can't open dataset file.", exc_info=True)
 
     def save_library(self):
-        pickle.dump(self.records, open(self.library_path, 'wb'))
+        with open(self.library_path, 'wb') as file:
+            pickle.dump(self.records, file)
 
 
 def crop_image(image, y1, y2, x1, x2):
@@ -354,10 +364,12 @@ class TrainGUI:
         self.entry = Entry(master)
         self.entry.pack()
         self.next_button = Button(master, text="Update", command=self.train)
-        self.delete_button = Button(master, text="Reset", command=self.reset_iterator)
+        self.reset_button = Button(master, text="Reset", command=self.reset_iterator)
+        self.delete_button = Button(master, text="Delete", command=self.delete)
         self.close_button = Button(master, text="Exit", command=self.quit)
-        self.delete_button.pack()
+        self.reset_button.pack()
         self.next_button.pack()
+        self.delete_button.pack()
         self.close_button.pack()
         self.iterator = None
         self.reset_iterator()
@@ -395,6 +407,9 @@ class TrainGUI:
             self.entry.insert(0, self.symbol_record.text)
         self.entry.focus_set()
 
+    def delete(self):
+        self.library.delete(self.symbol_record)
+
     def quit(self):
         self.library.save_library()
         self.master.quit()
@@ -409,7 +424,7 @@ def train_symbols(library_path, only_empty=True):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Image library trainer")
     parser.add_argument('-l', help='library file', type=str, default='pokerstars_flags.dat')
-    parser.add_argument('-ld', help='library dir', type=str, default=settings.package_dir)
+    parser.add_argument('-ld', help='library dir', type=str, default=settings.PACKAGE_DIR)
     parser.add_argument('-all', help='all images (not only empty)', action='store_true', default=False)
     args = parser.parse_args()
     train_symbols(library_path=os.path.join(args.ld, args.l), only_empty= not args.all)

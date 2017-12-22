@@ -66,7 +66,7 @@ class TestIntersection(unittest.TestCase):
         self.assertEqual(_get_united(intersected), intersected)
 
 
-class SymbolsDatasetTest(unittest.TestCase):
+class ImageLibraryTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.img_of_2 = np.array([[0, 255, 255, 255, 255, 0],
@@ -100,18 +100,26 @@ class SymbolsDatasetTest(unittest.TestCase):
         self.assertEqual(sd2.records['pu'], 'tu')
 
     def test_recognize_symbol(self):
-        dataset = ImageLibrary(records={(10, 6): [ImageRecord(self.img_of_2, '2')]})
-        _, symbol_record = dataset.get_image_record(self.img_of_2)
+        il = ImageLibrary(records={(10, 6): [ImageRecord(self.img_of_2, '2')]})
+        _, symbol_record = il.get_image_record(self.img_of_2)
         self.assertEqual(symbol_record.text, '2')
 
     def test__iter_(self):
-        dataset = ImageLibrary()
-        dataset.get_image_record(self.img_of_2)
-        dataset.get_image_record(self.img_of_3)
-        symbols = [symbol.image for symbol in dataset]
+        il = ImageLibrary()
+        il.get_image_record(self.img_of_2)
+        il.get_image_record(self.img_of_3)
+        symbols = [symbol.image for symbol in il]
         self.assertEqual(len(symbols), 2)
         self.assertIn(self.img_of_2, symbols)
         self.assertIn(self.img_of_2, symbols)
+
+    def test_delete_record(self):
+        il = ImageLibrary(records={(10, 6): [ImageRecord(self.img_of_2, '2'),
+                                             ImageRecord(self.img_of_3, '3')]})
+
+        self.assertEqual(len([r for r in il]), 2)
+        il.delete(ImageRecord(self.img_of_2, '2'))
+        self.assertEqual(len([r for r in il]), 1)
 
 
 class TestParsers(unittest.TestCase):
