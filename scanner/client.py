@@ -11,7 +11,7 @@ from pywinauto.application import Application, ProcessNotFoundError, AppStartErr
 import win32gui
 
 from scanner.ocr import pil_to_opencv, ImageLibrary, ImageLogger, recognize_characters, recognize_flag, recognize_row
-from scanner.ocr import RecordDoesNotExist, FlagTextIsNone
+from scanner.ocr import FlagDoesNotExist, FlagTextIsNone, CharacterDoesNotExist, CharacterTextIsNone
 from scanner import settings
 
 logging.config.dictConfig(settings.LOGGING_CONFIG)
@@ -255,17 +255,30 @@ class ListItem:
         if self.recognizer:
             try:
                 self.value = self.recognizer(row_image, self.zone, self.library, **self.kwargs)
-            except RecordDoesNotExist as exc:
+            except FlagDoesNotExist as exc:
                 log.warning("Was created new record in flag library",
                             extra={'images': [
                                 (exc.cropped_image, 'created-flag-row'),
                                 (exc.distinguished_image, 'created-flag-distinguished'),
                             ]})
                 self.value = None
+            except CharacterDoesNotExist as exc:
+                log.warning("Was created new record in character library",
+                            extra={'images': [
+                                (exc.cropped_image, 'created-character-row'),
+                                (exc.distinguished_image, 'created-character-distinguished'),
+                            ]})
+                self.value = None
             except FlagTextIsNone as exc:
                 log.warning("Flag record text is none",
                             extra={'images': [
                                 (exc.distinguished_image, 'flag-text-is-none'),
+                            ]})
+                self.value = None
+            except CharacterTextIsNone as exc:
+                log.warning("Character record text is none",
+                            extra={'images': [
+                                (exc.distinguished_image, 'character-text-is-none'),
                             ]})
                 self.value = None
         if self.parser:
@@ -294,6 +307,8 @@ class ListItem:
 
 
 def int_parser(initial_value):
+    if initial_value is None:
+        return None
     if initial_value == '':
         return 0
     int_str = ''.join(re.findall(r'\d', initial_value))
@@ -305,6 +320,8 @@ def int_parser(initial_value):
 
 
 def float_parser(initial_value):
+    if initial_value is None:
+        return None
     if initial_value == '':
         return 0
     float_str = ''.join(re.findall(r'\d|\.', initial_value))

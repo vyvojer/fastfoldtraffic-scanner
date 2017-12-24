@@ -47,8 +47,11 @@ class Scanner:
         unique_players_count = 0
         for player in self.client.player_list:
             unique_players_count += 1
-            entries_count += int(player['entries'])
-            players.append(player)
+            if player['entries'] is None:  # Some character wasn't recognized
+                log.error("Can't recognize field 'entries' for player '%s' ", player['name'])
+            else:
+                entries_count += int(player['entries'])
+                players.append(player)
             if player['country'] is None:
                 log.warning("Player '%s' from table '%s' has unknown country", player['name'], table)
         return unique_players_count, entries_count, players
@@ -65,6 +68,12 @@ class Scanner:
                                                                                       table['average_pot'],
                                                                                       table['players_per_flop'],
                                                                                       ))
+            if not all(table.values()):  # Some character wasn't recognized
+                for key, value in table.items():
+                    if value is None:
+                        break
+                log.error("Can't recognize field '%s' for table '%s' ", key, table['name'])
+                continue
             if not self.only_tables and table['player_count'] > 0:
                 unique_players_count, entries_count, players = self.scan_players(table['name'])
                 if not self._is_players_count_almost_equal(table['player_count'], entries_count):

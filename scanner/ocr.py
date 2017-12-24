@@ -149,6 +149,13 @@ class FlagDoesNotExist(RecordDoesNotExist):
         super(FlagDoesNotExist, self).__init__(library, cropped_image, distinguished_image, msg='Flag does not exist')
 
 
+class CharacterDoesNotExist(RecordDoesNotExist):
+    """ Record does not exist in library """
+    def __init__(self, library, cropped_image, distinguished_image):
+        super(CharacterDoesNotExist, self).__init__(library, cropped_image, distinguished_image,
+                                                    msg='Character does not exist')
+
+
 class RecordTextIsNone(OcrException):
     """ Record exist but text is None """
     def __init__(self, library, cropped_image, distinguished_image, msg=None):
@@ -162,7 +169,14 @@ class FlagTextIsNone(RecordTextIsNone):
     """ Record exist but text is None """
     def __init__(self, library, cropped_image, distinguished_image):
         super(FlagTextIsNone, self).__init__(library, cropped_image, distinguished_image,
-                                             msg='Record exist but text is None')
+                                             msg='Flag exist but text is None')
+
+
+class CharacterTextIsNone(RecordTextIsNone):
+    """ Record exist but text is None """
+    def __init__(self, library, cropped_image, distinguished_image):
+        super(CharacterTextIsNone, self).__init__(library, cropped_image, distinguished_image,
+                                             msg='Character exist but text is None')
 
 
 def recognize_characters(row_image, zone, library, **kwargs):
@@ -183,16 +197,9 @@ def recognize_characters(row_image, zone, library, **kwargs):
         symbol_image = thresh[y:y + h, x:x + w]
         was_created, symbol_record = library.get_image_record(symbol_image)
         if was_created:
-            log.warning("Was created new record in character library",
-                            extra={'images': [
-                                (cropped_image, 'created-symbol-row'),
-                                (symbol_image, 'created-symbol-distinguished'),
-                            ]})
+            raise CharacterDoesNotExist(library, cropped_image, symbol_image)
         elif symbol_record.text is None:
-            log.warning("Character record has None text",
-                            extra={'images': [
-                                (symbol_image, 'none-symbol-distinguished'),
-                            ]})
+            raise CharacterTextIsNone(library, cropped_image, symbol_image)
         text += str(symbol_record.text)
         if index > 0 and _check_space(united_rects[index - 1], (x, y, w, h)):
             text += ' '

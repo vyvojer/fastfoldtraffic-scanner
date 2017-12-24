@@ -60,7 +60,7 @@ LOGGING_CONFIG = {
     },
     'loggers': {
         '': {
-            'level': logging.WARNING,
+            'level': logging.DEBUG,
             'handlers': ['console', 'file', 'syslog']
         }
     },
