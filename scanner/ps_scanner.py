@@ -68,18 +68,21 @@ class Scanner:
                                                                                       table['average_pot'],
                                                                                       table['players_per_flop'],
                                                                                       ))
-            if not all(table.values()):  # Some character wasn't recognized
-                for key, value in table.items():
-                    if value is None:
-                        break
-                log.error("Can't recognize field '%s' for table '%s' ", key, table['name'])
+            # Some character wasn't recognized
+            all_recognized = True
+            for key, value in table.items():
+                if value is None:
+                    log.error("Can't recognize field '%s' for table '%s' ", key, table['name'])
+                    all_recognized = False
+            if not all_recognized:
+                log.error("Table '%s' was skipped", table['name'])
                 continue
             if not self.only_tables and table['player_count'] > 0:
                 unique_players_count, entries_count, players = self.scan_players(table['name'])
                 if not self._is_players_count_almost_equal(table['player_count'], entries_count):
-                    log.warning("Big differerence between player count ({}) and entries count ({})".format(
-                        table['player_count'], entries_count))
-                    break
+                    log.warning("Table '{}' has big difference between player count ({}) and entries count ({})".format(
+                        table['name'], table['player_count'], entries_count))
+                    continue
                 table['unique_player_count'] = unique_players_count
                 table['entry_count'] = entries_count
                 table['players'] = players
@@ -119,7 +122,7 @@ class Scanner:
             log.info("Scan result was saved")
 
     @staticmethod
-    def send_scan_result_to_api(scan_result: dict, scan_time: datetime.datetime=None, save_if_error=True):
+    def send_scan_result_to_api(scan_result: dict, scan_time: datetime.datetime = None, save_if_error=True):
         url = settings.API_HOST + settings.API_URL
         try:
             response = requests.put(url=url,
@@ -157,7 +160,14 @@ class Scanner:
 
     @staticmethod
     def _is_players_count_almost_equal(players, entries):
-        if abs(players - entries) < 15:
+        if players < 10:
+            threshold = 0.75
+        elif players < 25:
+            threshold = 0.85
+        else:
+            threshold = 0.94
+        delta = min(players, entries) / max(players, entries)
+        if delta >= threshold:
             return True
         else:
             return False
