@@ -161,9 +161,17 @@ class Scanner:
     @staticmethod
     def _is_players_count_almost_equal(players, entries):
         if players < 10:
-            threshold = 0.75
+            threshold = 0.7
         elif players < 25:
+            threshold = 0.75
+        elif players < 35:
+            threshold = 0.8
+        elif players < 55:
             threshold = 0.85
+        elif players < 100:
+            threshold = 0.9
+        elif players < 150:
+            threshold = 0.92
         else:
             threshold = 0.94
         delta = min(players, entries) / max(players, entries)
