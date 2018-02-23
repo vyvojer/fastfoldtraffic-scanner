@@ -2,6 +2,7 @@ import datetime
 import json
 import logging.config
 import os.path
+import os
 import sys
 from argparse import ArgumentParser
 import time
@@ -123,6 +124,7 @@ class Scanner:
 
     @staticmethod
     def send_scan_result_to_api(scan_result: dict, scan_time: datetime.datetime = None, save_if_error=True):
+        successfully = True
         url = settings.API_HOST + settings.API_URL
         try:
             response = requests.put(url=url,
@@ -131,14 +133,17 @@ class Scanner:
                                     headers={'content-type': 'application/json'},
                                     auth=(settings.API_USER, settings.API_PASSWORD))
             if not response.ok:
+                successfully = False
                 log.error("Response status code is 400. Errors: {}...".format(response.text[:100]))
                 response.raise_for_status()
         except requests.RequestException as e:
+            successfully = False
             log.error("Can't send request. The json file will saved", exc_info=True)
             if save_if_error:
                 Scanner._save_scan_result(scan_result, scan_time)
         else:
             log.info("Scan result was successfully sent")
+        return successfully
 
     def main_loop(self):
         repeat = True
@@ -184,7 +189,10 @@ class Scanner:
 def send_saved():
     for file in sorted(os.listdir(settings.JSON_DIR), reverse=True):
         scan_result = json.load(open(os.path.join(settings.JSON_DIR, file)))
-        Scanner.send_scan_result_to_api(scan_result, save_if_error=False)
+        if Scanner.send_scan_result_to_api(scan_result, save_if_error=False):
+            src = os.path.join(settings.JSON_DIR, file)
+            dst = os.path.join(settings.JSON_SENT_DIR, file)
+            os.rename(src, dst)
 
 
 def add_args(parser: ArgumentParser):

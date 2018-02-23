@@ -17,6 +17,7 @@ config = AutoConfig(search_path=BASE_DIR)
 SCANNER_NAME = config('SCANNER_NAME', default='LOCAL')
 
 JSON_DIR = config('JSON_DIR', default='.\\json')
+JSON_SENT_DIR = config('JSON_SENT_DIR', default='.\\json\sent')
 
 API_HOST = config('API_HOST', default='https://fastfoldtraffic.com')
 API_URL = config('API_URL', default='/api/v1/scans/')
