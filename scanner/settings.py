@@ -21,6 +21,12 @@ LOG_LEVEL = config('LOG_LEVEL', default='WARNING')
 JSON_DIR = config('JSON_DIR', default='.\\json')
 JSON_SENT_DIR = config('JSON_SENT_DIR', default='.\\json\sent')
 
+if not os.path.exists(JSON_DIR):
+    os.makedirs(JSON_DIR)
+
+if not os.path.exists(JSON_SENT_DIR):
+    os.makedirs(JSON_SENT_DIR)
+
 API_HOST = config('API_HOST', default='https://fastfoldtraffic.com')
 API_URL = config('API_URL', default='/api/v1/scans/')
 API_VERIFY_SSL = config('API_VERIFY_SSL', cast=bool, default=False)
