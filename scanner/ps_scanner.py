@@ -9,7 +9,8 @@ import time
 
 import requests
 
-from scanner import settings, ocr, client
+from scanner import settings, ocr, client, sender
+
 
 logging.config.dictConfig(settings.LOGGING_CONFIG)
 logging.setLoggerClass(ocr.ImageLogger)
@@ -107,43 +108,11 @@ class Scanner:
     def _handle_scan(self, scan_result: dict, scan_time: datetime.datetime):
         scan_time = datetime.datetime.now()
         if self.save_only:
-            self._save_scan_result(scan_result, scan_time)
+            sender.save_scan_result(scan_result, scan_time, was_sent=False)
         else:
-            self.send_scan_result_to_api(scan_result, scan_time)
+            sender.send_scan_result_to_api(scan_result, scan_time)
 
-    @staticmethod
-    def _save_scan_result(scan_result: dict, scan_time: datetime.datetime):
-        file_name = 'scan_{}.json'.format(scan_time.strftime("%Y-%m-%d_%H-%M-%S"))
-        try:
-            with open(os.path.join(settings.JSON_DIR, file_name), 'w') as file:
-                json.dump(scan_result, file, indent=4)
-        except FileNotFoundError:
-            log.error("Can't save json file", exc_info=True)
-        else:
-            log.info("Scan result was saved")
 
-    @staticmethod
-    def send_scan_result_to_api(scan_result: dict, scan_time: datetime.datetime = None, save_if_error=True):
-        successfully = True
-        url = settings.API_HOST + settings.API_URL
-        try:
-            response = requests.put(url=url,
-                                    verify=settings.API_VERIFY_SSL,
-                                    data=json.dumps(scan_result),
-                                    headers={'content-type': 'application/json'},
-                                    auth=(settings.API_USER, settings.API_PASSWORD))
-            if not response.ok:
-                successfully = False
-                log.error("Response status code is 400. Errors: {}...".format(response.text[:100]))
-                response.raise_for_status()
-        except requests.RequestException as e:
-            successfully = False
-            log.error("Can't send request. The json file will saved", exc_info=True)
-            if save_if_error:
-                Scanner._save_scan_result(scan_result, scan_time)
-        else:
-            log.info("Scan result was successfully sent")
-        return successfully
 
     def main_loop(self):
         repeat = True
@@ -186,18 +155,7 @@ class Scanner:
             return False
 
 
-def send_saved():
-    for file in sorted(os.listdir(settings.JSON_DIR), reverse=True):
-        scan_result = json.load(open(os.path.join(settings.JSON_DIR, file)))
-        if Scanner.send_scan_result_to_api(scan_result, save_if_error=False):
-            src = os.path.join(settings.JSON_DIR, file)
-            dst = os.path.join(settings.JSON_SENT_DIR, file)
-            os.rename(src, dst)
-
-
 def add_args(parser: ArgumentParser):
-    parser.add_argument('--send-saved', dest='send_saved', action='store_true', default=False,
-                        help="Don't scan. Only send all saved", )
     parser.add_argument('--save-only', dest='save_only', action='store_true', default=False,
                         help="Don't send a json file, only save", )
     parser.add_argument('--library-dir', dest='library_dir', default=None, help='Library directory')
@@ -223,8 +181,6 @@ if __name__ == '__main__':
         for l in [log, ocr.log, client.log]:
             l.setLevel(logging.DEBUG)
 
-    if args.send_saved:
-        send_saved()
     else:
         s = Scanner(save_only=args.save_only,
                     library_dir=args.library_dir,

@@ -16,6 +16,8 @@ config = AutoConfig(search_path=BASE_DIR)
 
 SCANNER_NAME = config('SCANNER_NAME', default='LOCAL')
 
+LOG_LEVEL = config('LOG_LEVEL', default='WARNING')
+
 JSON_DIR = config('JSON_DIR', default='.\\json')
 JSON_SENT_DIR = config('JSON_SENT_DIR', default='.\\json\sent')
 
@@ -61,7 +63,7 @@ LOGGING_CONFIG = {
     },
     'loggers': {
         '': {
-            'level': logging.WARNING,
+            'level': LOG_LEVEL,
             'handlers': ['console', 'file', 'syslog']
         }
     },
