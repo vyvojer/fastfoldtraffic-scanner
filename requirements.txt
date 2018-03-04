@@ -1,0 +1,6 @@
+requests
+pywinauto
+Pillow
+numpy
+opencv-python
+python-decouple
