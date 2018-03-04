@@ -81,7 +81,7 @@ POKERSTARS = {
     'default_x': 70,
     'default_y': 0,
     'default_width': 1170,
-    'default_height': 801,
+    'default_height': 601,
     'main_window': 'PokerStars Lobby',
     'table_list': 'PokerStarsList0',
     'player_list': 'PokerStarsList2',
