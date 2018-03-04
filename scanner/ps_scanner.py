@@ -7,7 +7,6 @@ import sys
 from argparse import ArgumentParser
 import time
 
-import requests
 
 from scanner import settings, ocr, client, sender
 
