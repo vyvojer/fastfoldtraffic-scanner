@@ -61,8 +61,9 @@ class Scanner:
         self.client.move_main_window()
         self.client.close_not_main_windows()
         tables = []
-        scan_result = {}
         log.debug("Start scanning tables...")
+        start_datetime = datetime.datetime.now()
+        total_player_count = 0
         for table in self.client.table_list:
             log.debug("Scanning table {}. Plrs: {} Avg Pot: ${} Plrs/Flop: {}".format(table['name'],
                                                                                       table['player_count'],
@@ -91,25 +92,34 @@ class Scanner:
                 table['unique_player_count'] = 0
                 table['entry_count'] = 0
                 table['players'] = []
+            total_player_count += unique_players_count
             log.debug("Table {} was scaned. Plrs: {} Entrs: {}".format(table['name'],
                                                                        table['unique_player_count'],
                                                                        table['entry_count'],
                                                                        ))
+            end_datetime = datetime.datetime.now()
+            table['datetime'] = end_datetime.isoformat()
             tables.append(table)
+            if total_player_count >= settings.SENDING_PLAYER_LIMIT:
+                self._handle_scan(tables, start_datetime, end_datetime)
+                total_player_count = 0
+                tables = []
         log.info("Scanner '{}' has scanned {} tables".format(settings.SCANNER_NAME, len(tables)))
+        if tables:
+            self._handle_scan(tables, start_datetime, end_datetime)
+
+    def _handle_scan(self, tables: list, start_datetime: datetime.datetime, end_datetime: datetime.datetime):
+        scan_result = {}
         scan_result['scanner_name'] = settings.SCANNER_NAME
         scan_result['room'] = settings.POKERSTARS['room']
-        scan_time = datetime.datetime.now()
-        scan_result['datetime'] = scan_time.isoformat()
+        scan_result['full'] = settings.FULL
+        scan_result['start_datetime'] = start_datetime.isoformat()
+        scan_result['end_datetime'] = end_datetime.isoformat()
         scan_result['tables'] = tables
-        self._handle_scan(scan_result, scan_time)
-
-    def _handle_scan(self, scan_result: dict, scan_time: datetime.datetime):
-        scan_time = datetime.datetime.now()
         if self.save_only:
-            sender.save_scan_result(scan_result, scan_time, was_sent=False)
+            sender.save_scan_result(scan_result, end_datetime, was_sent=False)
         else:
-            sender.send_scan_result_to_api(scan_result, scan_time)
+            sender.send_scan_result_to_api(scan_result, end_datetime)
 
 
 

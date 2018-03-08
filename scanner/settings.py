@@ -21,6 +21,9 @@ LOG_LEVEL = config('LOG_LEVEL', default='WARNING')
 JSON_DIR = config('JSON_DIR', default='.\\json')
 JSON_SENT_DIR = config('JSON_SENT_DIR', default='.\\json\sent')
 
+FULL = config('FULL', cast=bool, default=True)
+SENDING_PLAYER_LIMIT = config('SENDING_PLAYER_LIMIT', cast=int, default=50)
+
 if not os.path.exists(JSON_DIR):
     os.makedirs(JSON_DIR)
 
