@@ -89,6 +89,7 @@ class Scanner:
                 table['entry_count'] = entries_count
                 table['players'] = players
             else:
+                unique_players_count = 0
                 table['unique_player_count'] = 0
                 table['entry_count'] = 0
                 table['players'] = []
